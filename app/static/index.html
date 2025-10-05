@@ -41,9 +41,134 @@
 
         .main-content {
             display: grid;
-            grid-template-columns: 1fr 2fr;
+            grid-template-columns: 300px 1fr;
             gap: 20px;
             margin-bottom: 20px;
+            height: calc(100vh - 200px);
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px 12px 0 0;
+            scroll-behavior: smooth;
+        }
+
+        .chat-message {
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-user {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .message-assistant {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+        }
+
+        .message-user .message-bubble {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-assistant .message-bubble {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .message-label {
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .message-user .message-label {
+            text-align: right;
+        }
+
+        .assistant-result {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .sql-code {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+
+        .insights-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+
+        .suggestion-chip {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 20px;
+            margin: 6px 6px 6px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9em;
+        }
+
+        .suggestion-chip:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .chat-input-area {
+            background: white;
+            padding: 20px;
+            border-radius: 0 0 12px 12px;
+            border-top: 1px solid #e1e4e8;
         }
 
         .card {
@@ -290,70 +415,58 @@
                 </div>
             </div>
 
-            <!-- Main Query Section -->
-            <div class="card query-section">
-                <h2>💬 Ask a Question</h2>
-
-                <!-- Conversation Mode Toggle -->
-                <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
-                    <label style="display: flex; align-items: center; cursor: pointer; gap: 8px;">
-                        <input type="checkbox" id="conversationMode" onchange="toggleConversationMode()" style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="font-weight: 600; color: #333;">🤖 Conversation Mode</span>
-                    </label>
-                    <span style="color: #666; font-size: 0.9em;">Get intelligent follow-up suggestions and insights</span>
-                    <button id="clearConversationBtn" onclick="clearConversation()" style="margin-left: auto; padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; display: none;">
-                        🗑️ Clear Session
-                    </button>
+            <!-- Chat Interface -->
+            <div class="card chat-container">
+                <!-- Chat History -->
+                <div class="chat-history" id="chatHistory">
+                    <div style="text-align: center; color: #999; padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">💬</div>
+                        <div style="font-size: 1.1em; font-weight: 600; margin-bottom: 8px;">Start a Conversation</div>
+                        <div style="font-size: 0.9em;">Ask a question about healthcare data or enable conversation mode for intelligent insights</div>
+                    </div>
                 </div>
 
-                <div class="input-group">
-                    <select id="modelSelect" style="padding: 15px; border: 2px solid #e1e4e8; border-radius: 8px; font-size: 1em; background: white; cursor: pointer;" title="Select AI model">
-                        <optgroup label="GPT-4 Series (Recommended)">
-                            <option value="gpt-4o" selected>GPT-4o (Best quality - RECOMMENDED)</option>
-                            <option value="gpt-4o-mini">GPT-4o Mini (Fast & cheap)</option>
-                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                        </optgroup>
-                        <optgroup label="GPT-5 Series (Latest - 2025)">
-                            <option value="gpt-5">GPT-5 (400K context, 128K output)</option>
-                            <option value="gpt-5-mini">GPT-5 Mini (400K context)</option>
-                            <option value="gpt-5-nano">GPT-5 Nano (Fastest)</option>
-                        </optgroup>
-                        <optgroup label="O-Series Reasoning Models">
-                            <option value="o4-mini">o4-Mini (Latest reasoning)</option>
-                            <option value="o3">o3 (Advanced reasoning)</option>
-                            <option value="o3-mini">o3-Mini (Efficient reasoning)</option>
-                            <option value="o1">o1 (Advanced reasoning)</option>
-                            <option value="o1-mini">o1-Mini (Fast reasoning)</option>
-                            <option value="o1-preview">o1-Preview (Beta)</option>
-                        </optgroup>
-                    </select>
-                    <input
-                        type="text"
-                        id="questionInput"
-                        placeholder="e.g., How many patients have diabetes?"
-                        onkeypress="handleKeyPress(event)"
-                        style="flex: 2;"
-                    >
-                    <button class="btn btn-primary" onclick="executeQuery()" id="executeBtn">
-                        Execute
-                    </button>
-                </div>
-
-                <!-- Conversation Insights Panel -->
-                <div id="conversationInsights" style="display: none; margin-top: 15px; padding: 20px; background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-radius: 8px; border-left: 4px solid #667eea;">
-                    <div style="font-weight: 600; color: #333; margin-bottom: 10px; font-size: 1.1em;">💡 Insights</div>
-                    <div id="insightsText" style="color: #555; line-height: 1.6; margin-bottom: 15px;"></div>
-
-                    <div id="followupSuggestions" style="display: none;">
-                        <div style="font-weight: 600; color: #333; margin-bottom: 10px;">🔍 Suggested Follow-ups</div>
-                        <div id="suggestionsList"></div>
+                <!-- Chat Input Area -->
+                <div class="chat-input-area">
+                    <!-- Conversation Mode Toggle -->
+                    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                        <label style="display: flex; align-items: center; cursor: pointer; gap: 8px;">
+                            <input type="checkbox" id="conversationMode" onchange="toggleConversationMode()" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="font-weight: 600; color: #333;">🤖 Conversation Mode</span>
+                        </label>
+                        <select id="modelSelect" style="padding: 8px 12px; border: 2px solid #e1e4e8; border-radius: 6px; font-size: 0.9em; background: white; cursor: pointer;">
+                            <optgroup label="GPT-4">
+                                <option value="gpt-4o" selected>GPT-4o</option>
+                                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                            </optgroup>
+                            <optgroup label="GPT-5">
+                                <option value="gpt-5">GPT-5</option>
+                                <option value="gpt-5-mini">GPT-5 Mini</option>
+                            </optgroup>
+                        </select>
+                        <button id="clearConversationBtn" onclick="clearConversation()" style="margin-left: auto; padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; display: none;">
+                            🗑️ Clear
+                        </button>
                     </div>
 
-                    <div id="nudgeText" style="display: none; margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.7); border-radius: 6px; font-style: italic; color: #667eea;"></div>
+                    <!-- Input -->
+                    <div class="input-group">
+                        <input
+                            type="text"
+                            id="questionInput"
+                            placeholder="Ask about healthcare data..."
+                            onkeypress="handleKeyPress(event)"
+                            style="flex: 1; padding: 15px; border: 2px solid #e1e4e8; border-radius: 8px; font-size: 1em;"
+                        >
+                        <button class="btn btn-primary" onclick="executeQuery()" id="executeBtn">
+                            Send
+                        </button>
+                    </div>
                 </div>
+            </div>
 
-                <!-- Results Section -->
-                <div class="results-section" id="resultsSection">
+            <!-- Hidden Results Section for compatibility -->
+            <div class="results-section" id="resultsSection" style="display: none;">
                     <h2>📊 Results</h2>
 
                     <div id="explanationDiv" style="display: none;" class="explanation">
@@ -451,6 +564,116 @@
 
         let skipSpellCheck = false;
 
+        // Chat message management
+        function addUserMessage(question) {
+            const chatHistory = document.getElementById('chatHistory');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message message-user';
+            messageDiv.innerHTML = `
+                <div class="message-bubble">
+                    <div class="message-label">You</div>
+                    <div>${question}</div>
+                </div>
+            `;
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function addAssistantMessage(data) {
+            const chatHistory = document.getElementById('chatHistory');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message message-assistant';
+
+            let resultHTML = '';
+
+            // SQL Code
+            if (data.sql) {
+                resultHTML += `<div class="sql-code">${data.sql}</div>`;
+            }
+
+            // Results table
+            if (data.rows && data.rows.length > 0) {
+                const tableHTML = `
+                    <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+                        <thead>
+                            <tr>${data.columns.map(col => `<th style="background: #667eea; color: white; padding: 8px; text-align: left;">${col}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${data.rows.slice(0, 5).map(row => `
+                                <tr>${data.columns.map(col => `<td style="padding: 8px; border-bottom: 1px solid #e1e4e8;">${formatValue(row[col])}</td>`).join('')}</tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                resultHTML += tableHTML;
+
+                if (data.rows.length > 5) {
+                    resultHTML += `<div style="font-size: 0.9em; color: #666; margin-top: 8px;">Showing first 5 of ${data.rows.length} rows</div>`;
+                }
+            } else if (data.success) {
+                resultHTML += `<div style="padding: 20px; text-align: center; color: #666;">✓ Query executed successfully (0 results)</div>`;
+            }
+
+            // Insights and suggestions
+            if (data.conversation) {
+                if (data.conversation.insights) {
+                    resultHTML += `
+                        <div class="insights-box">
+                            <div style="font-weight: 600; margin-bottom: 8px;">💡 Insights</div>
+                            <div>${data.conversation.insights}</div>
+                        </div>
+                    `;
+                }
+
+                if (data.conversation.suggestions && data.conversation.suggestions.length > 0) {
+                    resultHTML += `<div style="margin-top: 12px; font-weight: 600;">🔍 Try these next:</div>`;
+                    data.conversation.suggestions.forEach(s => {
+                        resultHTML += `
+                            <div class="suggestion-chip" onclick="executeSuggestion('${s.question.replace(/'/g, "\\'")}')">${s.question}</div>
+                        `;
+                    });
+                }
+
+                if (data.conversation.nudge) {
+                    resultHTML += `<div style="margin-top: 12px; font-style: italic; color: #667eea;">💭 ${data.conversation.nudge}</div>`;
+                }
+            }
+
+            // Stats
+            if (data.execution_time_ms) {
+                resultHTML += `<div style="font-size: 0.85em; color: #999; margin-top: 12px;">${data.model} • ${data.execution_time_ms}ms</div>`;
+            }
+
+            messageDiv.innerHTML = `
+                <div class="message-bubble" style="max-width: 90%;">
+                    <div class="message-label">Assistant</div>
+                    <div class="assistant-result">${resultHTML}</div>
+                </div>
+            `;
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function addLoadingMessage() {
+            const chatHistory = document.getElementById('chatHistory');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message message-assistant';
+            messageDiv.id = 'loadingMessage';
+            messageDiv.innerHTML = `
+                <div class="message-bubble">
+                    <div class="message-label">Assistant</div>
+                    <div class="loading"><div class="spinner"></div><p>Thinking...</p></div>
+                </div>
+            `;
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function removeLoadingMessage() {
+            const loadingMsg = document.getElementById('loadingMessage');
+            if (loadingMsg) loadingMsg.remove();
+        }
+
         async function executeQuery(forceExecute = false) {
             const question = document.getElementById('questionInput').value.trim();
             if (!question) {
@@ -459,23 +682,19 @@
             }
 
             const executeBtn = document.getElementById('executeBtn');
-            const resultsSection = document.getElementById('resultsSection');
-            const errorDiv = document.getElementById('errorDiv');
-            const sqlDisplay = document.getElementById('sqlDisplay');
-            const tableContainer = document.getElementById('tableContainer');
-            const explanationDiv = document.getElementById('explanationDiv');
-            const explanationText = document.getElementById('explanationText');
-            const statsDiv = document.getElementById('statsDiv');
 
             // Show loading
             executeBtn.disabled = true;
-            executeBtn.textContent = 'Executing...';
-            resultsSection.classList.add('show');
-            errorDiv.style.display = 'none';
-            sqlDisplay.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating SQL...</p></div>';
-            tableContainer.innerHTML = '';
-            explanationDiv.style.display = 'none';
-            statsDiv.innerHTML = '';
+            executeBtn.textContent = 'Sending...';
+
+            // Add user message to chat
+            addUserMessage(question);
+
+            // Clear input
+            document.getElementById('questionInput').value = '';
+
+            // Add loading message
+            addLoadingMessage();
 
             try {
                 const model = document.getElementById('modelSelect').value;
@@ -503,84 +722,44 @@
 
                 const data = await response.json();
 
-                // Handle spell check suggestions
-                if (data.needs_confirmation && data.spell_check) {
-                    handleSpellCheckSuggestion(data);
-                    executeBtn.disabled = false;
-                    executeBtn.textContent = 'Execute';
-                    return;
-                }
+                // Remove loading message
+                removeLoadingMessage();
 
-                // Handle ambiguity clarification
-                if (data.needs_clarification && data.ambiguity) {
-                    handleAmbiguityClarification(data);
-                    executeBtn.disabled = false;
-                    executeBtn.textContent = 'Execute';
-                    return;
-                }
+                // TODO: Handle spell check and ambiguity in chat UI later
 
+                // Add assistant response to chat
                 if (data.success) {
-                    // Display SQL
-                    sqlDisplay.textContent = data.sql;
-
-                    // Show edit button
-                    document.getElementById('editSqlBtn').style.display = 'inline-block';
-
-                    // Display explanation
-                    if (data.explanation) {
-                        explanationText.textContent = data.explanation;
-                        explanationDiv.style.display = 'block';
-                    }
-
-                    // Display conversation insights if in conversation mode
-                    if (conversationModeEnabled && data.conversation) {
-                        displayConversationInsights(data.conversation);
-                    }
-
-                    // Store data for pagination and render
-                    if (data.rows && data.rows.length > 0) {
-                        allRows = data.rows;
-                        allColumns = data.columns;
-                        currentPage = 1;
-                        renderTable(1);
-
-                        // Display stats
-                        const truncatedMsg = data.truncated ? ' (truncated)' : '';
-                        statsDiv.innerHTML = `
-                            <span>Rows: ${data.row_count}${truncatedMsg}</span>
-                            <span>Execution time: ${data.execution_time_ms}ms</span>
-                            <span>Model: ${data.model}</span>
-                        `;
-                    } else {
-                        allRows = [];
-                        allColumns = [];
-                        document.getElementById('paginationContainer').style.display = 'none';
-                        tableContainer.innerHTML = `
-                            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; margin-top: 20px;">
-                                <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
-                                <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">No Records Found</div>
-                                <div style="color: #666;">The query executed successfully but returned no results.</div>
-                            </div>
-                        `;
-                        statsDiv.innerHTML = `
-                            <span>Rows: 0</span>
-                            <span>Execution time: ${data.execution_time_ms}ms</span>
-                            <span>Model: ${data.model}</span>
-                        `;
-                    }
+                    addAssistantMessage(data);
                 } else {
-                    // Display error
-                    errorDiv.textContent = `Error: ${data.error}`;
-                    errorDiv.style.display = 'block';
-                    sqlDisplay.textContent = data.sql || 'No SQL generated';
+                    // Add error message
+                    const chatHistory = document.getElementById('chatHistory');
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'chat-message message-assistant';
+                    messageDiv.innerHTML = `
+                        <div class="message-bubble">
+                            <div class="message-label">Assistant</div>
+                            <div class="error">❌ ${data.error || 'Query failed'}</div>
+                        </div>
+                    `;
+                    chatHistory.appendChild(messageDiv);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
                 }
             } catch (error) {
-                errorDiv.textContent = `Network error: ${error.message}`;
-                errorDiv.style.display = 'block';
-                sqlDisplay.textContent = '';
+                removeLoadingMessage();
+                const chatHistory = document.getElementById('chatHistory');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'chat-message message-assistant';
+                messageDiv.innerHTML = `
+                    <div class="message-bubble">
+                        <div class="message-label">Assistant</div>
+                        <div class="error">❌ Network error: ${error.message}</div>
+                    </div>
+                `;
+                chatHistory.appendChild(messageDiv);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
             } finally {
                 executeBtn.disabled = false;
-                executeBtn.textContent = 'Execute';
+                executeBtn.textContent = 'Send';
             }
         }
 
@@ -1058,23 +1237,28 @@
                 });
 
                 if (response.ok) {
-                    // Hide insights panel
-                    document.getElementById('conversationInsights').style.display = 'none';
+                    // Clear chat history
+                    const chatHistory = document.getElementById('chatHistory');
+                    chatHistory.innerHTML = `
+                        <div style="text-align: center; color: #999; padding: 40px 20px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">💬</div>
+                            <div style="font-size: 1.1em; font-weight: 600; margin-bottom: 8px;">Start a Conversation</div>
+                            <div style="font-size: 0.9em;">Ask a question about healthcare data or enable conversation mode for intelligent insights</div>
+                        </div>
+                    `;
 
                     // Generate new session
                     currentSessionId = `session_${Date.now()}`;
                     console.log('Conversation cleared, new session:', currentSessionId);
 
-                    // Show confirmation
-                    const insightsPanel = document.getElementById('conversationInsights');
-                    insightsPanel.style.display = 'block';
-                    insightsPanel.innerHTML = `
-                        <div style="text-align: center; color: #28a745; font-weight: 600;">
-                            ✓ Conversation history cleared. Starting fresh!
-                        </div>
-                    `;
+                    // Show confirmation message
+                    const messageDiv = document.createElement('div');
+                    messageDiv.style.cssText = 'text-align: center; color: #28a745; font-weight: 600; padding: 20px;';
+                    messageDiv.textContent = '✓ Conversation history cleared. Starting fresh!';
+                    chatHistory.appendChild(messageDiv);
+
                     setTimeout(() => {
-                        insightsPanel.style.display = 'none';
+                        messageDiv.remove();
                     }, 3000);
                 } else {
                     alert('Failed to clear conversation');
