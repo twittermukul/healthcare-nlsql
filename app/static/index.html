@@ -580,6 +580,13 @@
         }
 
         function addAssistantMessage(data) {
+            console.log('🎨 Rendering assistant message:', {
+                hasConversation: !!data.conversation,
+                hasInsights: !!data.conversation?.insights,
+                hasSuggestions: !!data.conversation?.suggestions?.length,
+                conversationData: data.conversation
+            });
+
             const chatHistory = document.getElementById('chatHistory');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'chat-message message-assistant';
@@ -731,10 +738,76 @@
                     hasConversation: !!data.conversation,
                     conversationMode: conversationModeEnabled,
                     insights: data.conversation?.insights?.substring(0, 50),
-                    suggestionsCount: data.conversation?.suggestions?.length
+                    suggestionsCount: data.conversation?.suggestions?.length,
+                    needsConfirmation: data.needs_confirmation,
+                    needsClarification: data.needs_clarification
                 });
 
-                // TODO: Handle spell check and ambiguity in chat UI later
+                // Handle spell check suggestions
+                if (data.needs_confirmation && data.spell_check) {
+                    const chatHistory = document.getElementById('chatHistory');
+                    const correctedQuery = data.spell_check.corrected_query;
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'chat-message message-assistant';
+                    messageDiv.innerHTML = `
+                        <div class="message-bubble" style="max-width: 90%;">
+                            <div class="message-label">Assistant</div>
+                            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px;">
+                                <div style="font-weight: 600; margin-bottom: 10px;">⚠️ Possible spelling errors detected</div>
+                                <div style="margin-bottom: 10px;">
+                                    <strong>Original:</strong> <span style="color: #c33;">${question}</span><br>
+                                    <strong>Did you mean:</strong> <span style="color: #0a0; font-weight: bold;">${correctedQuery}</span>
+                                </div>
+                                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                    <div class="suggestion-chip" style="background: #28a745;" onclick="executeSuggestion('${correctedQuery.replace(/'/g, "\\'")}')"
+                                         >✓ Use Corrected Version</div>
+                                    <div class="suggestion-chip" style="background: #667eea;" onclick="executeQuery(true)">Use Original Anyway</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    chatHistory.appendChild(messageDiv);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                    executeBtn.disabled = false;
+                    executeBtn.textContent = 'Send';
+                    return;
+                }
+
+                // Handle ambiguity clarification
+                if (data.needs_clarification && data.ambiguity) {
+                    const chatHistory = document.getElementById('chatHistory');
+                    const ambiguity = data.ambiguity;
+                    const options = ambiguity.clarification_options || [];
+
+                    let optionsHtml = '';
+                    options.forEach((option, index) => {
+                        optionsHtml += `
+                            <div class="suggestion-chip" onclick="executeSuggestion('${option.refined_query.replace(/'/g, "\\'")}')"
+                                 style="display: block; margin-bottom: 8px; text-align: left;">
+                                ${option.text}
+                            </div>
+                        `;
+                    });
+
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'chat-message message-assistant';
+                    messageDiv.innerHTML = `
+                        <div class="message-bubble" style="max-width: 90%;">
+                            <div class="message-label">Assistant</div>
+                            <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; border-radius: 8px;">
+                                <div style="font-weight: 600; margin-bottom: 10px;">🤔 Your query needs clarification</div>
+                                <div style="margin-bottom: 15px;">${ambiguity.reason}</div>
+                                <div style="font-weight: 600; margin-bottom: 10px;">What did you mean?</div>
+                                ${optionsHtml}
+                            </div>
+                        </div>
+                    `;
+                    chatHistory.appendChild(messageDiv);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                    executeBtn.disabled = false;
+                    executeBtn.textContent = 'Send';
+                    return;
+                }
 
                 // Add assistant response to chat
                 if (data.success) {
