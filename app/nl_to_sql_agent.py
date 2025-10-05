@@ -79,11 +79,12 @@ IMPORTANT RULES:
 3. CRITICAL: Use exact column names as shown - do not assume or invent column names
 4. For year filtering, use WHERE conditions on year columns (when they exist)
 5. Return patient_id, never patient names (PHI protection)
-6. LIMIT clause usage:
-   - If user specifies a number (top 10, first 20) → use that exact LIMIT
-   - If user says "show me" without a number → use LIMIT 100 (safe default for lists)
-   - If query is COUNT/SUM/AVG (aggregation) → NO LIMIT needed
-   - If user says "all" explicitly → NO LIMIT
+6. LIMIT clause usage - DO NOT USE LIMIT:
+   - NEVER add LIMIT to queries
+   - Return ALL matching records
+   - UI will handle pagination and display limits
+   - Exception: Only use LIMIT if user explicitly specifies (e.g., "top 10", "first 5")
+   - For aggregations (COUNT/SUM/AVG): NO LIMIT needed
 7. Generate ONLY the SQL query, no explanations or markdown
 
 FORMATTING & INTELLIGENCE:
