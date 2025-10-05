@@ -226,17 +226,37 @@ async def conversation_query(request: QueryRequest):
     3. Returns intelligent follow-up suggestions
     4. Provides insights and guidance
     """
+    start_time = time.time()
+
     try:
-        # Get or create session ID (from header or generate)
+        # Get or create session ID
         session_id = request.session_id if hasattr(request, 'session_id') else f"session_{int(time.time())}"
 
-        # Execute the query
-        result = nl_to_sql_agent.generate_sql(
+        # Check spelling first (unless skipped)
+        if not request.skip_spell_check:
+            spell_check = spell_checker.check_query(request.question)
+
+            if spell_check["has_errors"]:
+                # Return suggestion for user confirmation
+                return QueryResponse(
+                    success=False,
+                    needs_confirmation=True,
+                    spell_check=spell_check,
+                    natural_language_query=request.question,
+                    error=spell_checker.format_suggestion_message(spell_check)
+                )
+
+        # Execute the query (this runs SQL and gets results)
+        result = nl_to_sql_agent.execute_query(
             natural_language_query=request.question,
             include_explanation=request.include_explanation,
             model=request.model,
             skip_ambiguity_check=request.skip_ambiguity_check
         )
+
+        # Add execution time
+        execution_time = (time.time() - start_time) * 1000
+        result["execution_time_ms"] = round(execution_time, 2)
 
         # If successful, get intelligent follow-ups
         if result.get("success"):
@@ -265,7 +285,7 @@ async def conversation_query(request: QueryRequest):
                 "history_count": len(conversation_manager.get_conversation_history(session_id))
             }
 
-        return result
+        return QueryResponse(**result)
 
     except Exception as e:
         logger.error(f"Conversation query error: {str(e)}")
