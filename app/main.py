@@ -250,19 +250,24 @@ async def conversation_query(request: QueryRequest):
         previous_sql = None
         previous_query = None
         if session_id:
-            history = conversation_manager.get_conversation_history(session_id, limit=1)
+            history = conversation_manager.get_conversation_history(session_id, limit=5)
             if history and len(history) >= 2:
                 # Get the last assistant message which contains SQL
                 for msg in reversed(history):
                     if msg.get("role") == "assistant" and "Generated SQL:" in msg.get("content", ""):
                         content = msg.get("content", "")
-                        if "Generated SQL:" in content:
-                            sql_part = content.split("Generated SQL:")[1].split("\n")[0].strip()
+                        if "Generated SQL:" in content and "Results:" in content:
+                            # Extract SQL (everything between "Generated SQL:" and "Results:")
+                            sql_part = content.split("Generated SQL:")[1].split("Results:")[0].strip()
                             previous_sql = sql_part
                         if "User asked:" in content:
                             query_part = content.split("User asked:")[1].split("\n")[0].strip().strip('"')
                             previous_query = query_part
                         break
+
+            if previous_sql and previous_query:
+                logger.info(f"🔗 Context extracted - Previous query: {previous_query[:50]}...")
+                logger.info(f"🔗 Context extracted - Previous SQL: {previous_sql[:100]}...")
 
         # Execute the query (this runs SQL and gets results)
         result = nl_to_sql_agent.execute_query(
