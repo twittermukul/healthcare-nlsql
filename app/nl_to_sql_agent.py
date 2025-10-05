@@ -85,7 +85,17 @@ IMPORTANT RULES:
    - UI will handle pagination and display limits
    - Exception: Only use LIMIT if user explicitly specifies (e.g., "top 10", "first 5")
    - For aggregations (COUNT/SUM/AVG): NO LIMIT needed
-7. Generate ONLY the SQL query, no explanations or markdown
+7. ORDER BY clause - ALWAYS use intelligent ordering:
+   - For rankings/top queries: ORDER BY the metric DESC (highest first)
+   - For lists: ORDER BY most relevant column (costs DESC, visits DESC, date DESC)
+   - For patient lists: ORDER BY patient_id ASC (consistent ordering)
+   - For time-series: ORDER BY date/year ASC (chronological)
+   - Examples:
+     * "ER frequent flyers" → ORDER BY er_visits DESC
+     * "highest costs" → ORDER BY total_cost DESC
+     * "patient demographics" → ORDER BY patient_id ASC
+     * "monthly trends" → ORDER BY month ASC
+8. Generate ONLY the SQL query, no explanations or markdown
 
 FORMATTING & INTELLIGENCE:
 - For percentages/rates: ALWAYS round to 2 decimal places using ROUND(value, 2)

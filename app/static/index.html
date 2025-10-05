@@ -1145,9 +1145,9 @@
             document.getElementById('modalPrevBtn').disabled = modalCurrentPage === 1;
             document.getElementById('modalNextBtn').disabled = modalCurrentPage === totalPages;
 
-            // Show/hide download button based on row count
+            // Always show download button when results exist
             const downloadBtn = document.getElementById('downloadBtn');
-            downloadBtn.style.display = data.rows.length >= 100 ? 'flex' : 'none';
+            downloadBtn.style.display = data.rows.length > 0 ? 'flex' : 'none';
         }
 
         function changeModalPage(delta) {
