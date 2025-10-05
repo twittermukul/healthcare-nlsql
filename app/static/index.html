@@ -337,13 +337,25 @@
 
                     <div class="sql-header">
                         <strong>Generated SQL:</strong>
-                        <button class="copy-btn" onclick="copySql()">Copy SQL</button>
+                        <div>
+                            <button class="copy-btn" onclick="copySql()" style="margin-right: 5px;">Copy SQL</button>
+                            <button class="copy-btn" id="editSqlBtn" onclick="toggleEditSql()" style="display: none;">✏️ Edit Query</button>
+                            <button class="copy-btn" id="executeSqlBtn" onclick="executeEditedSql()" style="display: none; background: #28a745;">▶ Execute Edited</button>
+                            <button class="copy-btn" id="cancelEditBtn" onclick="cancelEditSql()" style="display: none; background: #dc3545;">Cancel</button>
+                        </div>
                     </div>
                     <div class="sql-display" id="sqlDisplay"></div>
+                    <textarea class="sql-display" id="sqlEditor" style="display: none; font-family: 'Courier New', monospace; resize: vertical; min-height: 150px;"></textarea>
 
                     <div id="errorDiv" style="display: none;" class="error"></div>
 
                     <div id="tableContainer" class="table-container"></div>
+
+                    <div id="paginationContainer" style="display: none; margin: 20px 0; text-align: center;">
+                        <button id="prevPage" onclick="changePage(-1)" style="padding: 8px 16px; margin: 0 5px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px;">← Previous</button>
+                        <span id="pageInfo" style="margin: 0 15px; font-weight: 500;"></span>
+                        <button id="nextPage" onclick="changePage(1)" style="padding: 8px 16px; margin: 0 5px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px;">Next →</button>
+                    </div>
 
                     <div class="stats" id="statsDiv"></div>
                 </div>
@@ -474,27 +486,21 @@
                     // Display SQL
                     sqlDisplay.textContent = data.sql;
 
+                    // Show edit button
+                    document.getElementById('editSqlBtn').style.display = 'inline-block';
+
                     // Display explanation
                     if (data.explanation) {
                         explanationText.textContent = data.explanation;
                         explanationDiv.style.display = 'block';
                     }
 
-                    // Display table
+                    // Store data for pagination and render
                     if (data.rows && data.rows.length > 0) {
-                        const table = `
-                            <table>
-                                <thead>
-                                    <tr>${data.columns.map(col => `<th>${col}</th>`).join('')}</tr>
-                                </thead>
-                                <tbody>
-                                    ${data.rows.map(row => `
-                                        <tr>${data.columns.map(col => `<td>${formatValue(row[col])}</td>`).join('')}</tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        `;
-                        tableContainer.innerHTML = table;
+                        allRows = data.rows;
+                        allColumns = data.columns;
+                        currentPage = 1;
+                        renderTable(1);
 
                         // Display stats
                         const truncatedMsg = data.truncated ? ' (truncated)' : '';
@@ -504,6 +510,9 @@
                             <span>Model: ${data.model}</span>
                         `;
                     } else {
+                        allRows = [];
+                        allColumns = [];
+                        document.getElementById('paginationContainer').style.display = 'none';
                         tableContainer.innerHTML = `
                             <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; margin-top: 20px;">
                                 <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
@@ -533,6 +542,12 @@
             }
         }
 
+        // Pagination state
+        let currentPage = 1;
+        let rowsPerPage = 10;
+        let allRows = [];
+        let allColumns = [];
+
         function formatValue(value) {
             if (value === null || value === undefined) {
                 return '<span style="color: #999;">NULL</span>';
@@ -541,6 +556,172 @@
                 return value.toLocaleString();
             }
             return value;
+        }
+
+        function renderTable(page = 1) {
+            const tableContainer = document.getElementById('tableContainer');
+            const paginationContainer = document.getElementById('paginationContainer');
+            const prevBtn = document.getElementById('prevPage');
+            const nextBtn = document.getElementById('nextPage');
+            const pageInfo = document.getElementById('pageInfo');
+
+            if (allRows.length === 0) {
+                paginationContainer.style.display = 'none';
+                return;
+            }
+
+            const totalPages = Math.ceil(allRows.length / rowsPerPage);
+            currentPage = Math.max(1, Math.min(page, totalPages));
+
+            const startIdx = (currentPage - 1) * rowsPerPage;
+            const endIdx = startIdx + rowsPerPage;
+            const pageRows = allRows.slice(startIdx, endIdx);
+
+            const table = `
+                <table>
+                    <thead>
+                        <tr>${allColumns.map(col => `<th>${col}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${pageRows.map(row => `
+                            <tr>${allColumns.map(col => `<td>${formatValue(row[col])}</td>`).join('')}</tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            tableContainer.innerHTML = table;
+
+            // Update pagination controls
+            if (allRows.length > rowsPerPage) {
+                paginationContainer.style.display = 'block';
+                pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${allRows.length} total rows)`;
+                prevBtn.disabled = currentPage === 1;
+                nextBtn.disabled = currentPage === totalPages;
+                prevBtn.style.opacity = currentPage === 1 ? '0.5' : '1';
+                nextBtn.style.opacity = currentPage === totalPages ? '0.5' : '1';
+                prevBtn.style.cursor = currentPage === 1 ? 'not-allowed' : 'pointer';
+                nextBtn.style.cursor = currentPage === totalPages ? 'not-allowed' : 'pointer';
+            } else {
+                paginationContainer.style.display = 'none';
+            }
+        }
+
+        function changePage(delta) {
+            renderTable(currentPage + delta);
+        }
+
+        function toggleEditSql() {
+            const sqlDisplay = document.getElementById('sqlDisplay');
+            const sqlEditor = document.getElementById('sqlEditor');
+            const editBtn = document.getElementById('editSqlBtn');
+            const executeBtn = document.getElementById('executeSqlBtn');
+            const cancelBtn = document.getElementById('cancelEditBtn');
+
+            // Switch to edit mode
+            sqlEditor.value = sqlDisplay.textContent;
+            sqlDisplay.style.display = 'none';
+            sqlEditor.style.display = 'block';
+            editBtn.style.display = 'none';
+            executeBtn.style.display = 'inline-block';
+            cancelBtn.style.display = 'inline-block';
+        }
+
+        function cancelEditSql() {
+            const sqlDisplay = document.getElementById('sqlDisplay');
+            const sqlEditor = document.getElementById('sqlEditor');
+            const editBtn = document.getElementById('editSqlBtn');
+            const executeBtn = document.getElementById('executeSqlBtn');
+            const cancelBtn = document.getElementById('cancelEditBtn');
+
+            // Switch back to display mode
+            sqlDisplay.style.display = 'block';
+            sqlEditor.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+            executeBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+        }
+
+        async function executeEditedSql() {
+            const sqlEditor = document.getElementById('sqlEditor');
+            const errorDiv = document.getElementById('errorDiv');
+            const tableContainer = document.getElementById('tableContainer');
+            const statsDiv = document.getElementById('statsDiv');
+            const executeBtn = document.getElementById('executeSqlBtn');
+
+            const editedSql = sqlEditor.value.trim();
+
+            if (!editedSql) {
+                errorDiv.textContent = 'Please enter a SQL query';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            errorDiv.style.display = 'none';
+            executeBtn.disabled = true;
+            executeBtn.textContent = '⏳ Executing...';
+
+            try {
+                const response = await fetch('/api/sql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sql: editedSql
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Update the display with edited SQL
+                    document.getElementById('sqlDisplay').textContent = editedSql;
+
+                    // Cancel edit mode
+                    cancelEditSql();
+
+                    // Store data for pagination and render
+                    if (data.rows && data.rows.length > 0) {
+                        allRows = data.rows;
+                        allColumns = data.columns;
+                        currentPage = 1;
+                        renderTable(1);
+
+                        // Display stats
+                        const truncatedMsg = data.truncated ? ' (truncated)' : '';
+                        statsDiv.innerHTML = `
+                            <span>Rows: ${data.row_count}${truncatedMsg}</span>
+                            <span>Execution time: ${data.execution_time_ms}ms</span>
+                            <span>Model: Custom SQL</span>
+                        `;
+                    } else {
+                        allRows = [];
+                        allColumns = [];
+                        document.getElementById('paginationContainer').style.display = 'none';
+                        tableContainer.innerHTML = `
+                            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; margin-top: 20px;">
+                                <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
+                                <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">No Records Found</div>
+                                <div style="color: #666;">The query executed successfully but returned no results.</div>
+                            </div>
+                        `;
+                        statsDiv.innerHTML = `
+                            <span>Rows: 0</span>
+                            <span>Execution time: ${data.execution_time_ms}ms</span>
+                            <span>Model: Custom SQL</span>
+                        `;
+                    }
+                } else {
+                    errorDiv.textContent = `Error: ${data.error}`;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = `Network error: ${error.message}`;
+                errorDiv.style.display = 'block';
+            } finally {
+                executeBtn.disabled = false;
+                executeBtn.textContent = '▶ Execute Edited';
+            }
         }
 
         function copySql() {
