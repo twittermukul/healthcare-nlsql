@@ -789,6 +789,7 @@
                         `;
                     });
 
+                    const customInputId = `customInput_${Date.now()}`;
                     const messageDiv = document.createElement('div');
                     messageDiv.className = 'chat-message message-assistant';
                     messageDiv.innerHTML = `
@@ -799,6 +800,15 @@
                                 <div style="margin-bottom: 15px;">${ambiguity.reason}</div>
                                 <div style="font-weight: 600; margin-bottom: 10px;">What did you mean?</div>
                                 ${optionsHtml}
+                                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                                    <input type="text" id="${customInputId}" placeholder="Or type your own clarification..."
+                                           style="width: 100%; padding: 10px; border: 2px solid #e1e4e8; border-radius: 6px; margin-bottom: 10px;"
+                                           onkeypress="if(event.key==='Enter') executeCustomClarification('${customInputId}')">
+                                    <div class="suggestion-chip" onclick="executeCustomClarification('${customInputId}')"
+                                         style="background: #667eea; display: inline-block;">
+                                        ✏️ Use Custom Query
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1314,6 +1324,16 @@
             document.getElementById('questionInput').value = question;
             skipSpellCheck = true;
             executeQuery(true);
+        }
+
+        function executeCustomClarification(inputId) {
+            const customInput = document.getElementById(inputId);
+            const customQuery = customInput?.value.trim();
+            if (!customQuery) {
+                alert('Please enter a clarification');
+                return;
+            }
+            executeSuggestion(customQuery);
         }
 
         async function clearConversation() {
