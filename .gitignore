@@ -1,0 +1,67 @@
+# Environment files (contains credentials)
+.env
+.env.local
+.env.*.local
+app/.env
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.dump
+*.sql.gz
+*.backup
+postgres_data/
+backups/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Node
+node_modules/
+
+# Secrets & Keys
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+.cache/

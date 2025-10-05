@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: nlsql-postgres
+    environment:
+      POSTGRES_DB: healthcare_analytics
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - nlsql-network
+
+  # NL→SQL API Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nlsql-app
+    environment:
+      # OpenAI Configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_API_BASE_URL: ${OPENAI_API_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      OPENAI_TEMPERATURE: ${OPENAI_TEMPERATURE:-0.1}
+
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: healthcare_analytics
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+
+      # API Configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_RELOAD: "false"
+      API_WORKERS: ${API_WORKERS:-1}
+
+      # CORS Configuration
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
+
+      # App Configuration
+      DEBUG: ${DEBUG:-false}
+
+      # Query Settings
+      MAX_QUERY_RESULTS: ${MAX_QUERY_RESULTS:-1000}
+      QUERY_TIMEOUT_SECONDS: ${QUERY_TIMEOUT_SECONDS:-30}
+      ENABLE_QUERY_CACHE: ${ENABLE_QUERY_CACHE:-true}
+      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-300}
+
+      # Security
+      ENABLE_QUERY_VALIDATION: ${ENABLE_QUERY_VALIDATION:-true}
+      ALLOWED_TABLES: ${ALLOWED_TABLES:-dim_patient,vw_patients_2025,vw_patient_annual_costs_2025}
+      BLOCKED_KEYWORDS: ${BLOCKED_KEYWORDS:-DROP,DELETE,TRUNCATE,ALTER,CREATE,INSERT,UPDATE}
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    restart: unless-stopped
+
+    networks:
+      - nlsql-network
+
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  nlsql-network:
+    driver: bridge

@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Analytics NL→SQL</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .example-queries {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .example-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .example-item:hover {
+            background: #e9ecef;
+            border-left-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .example-item .question {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .example-item .description {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .query-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        #questionInput {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e1e4e8;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.2s;
+        }
+
+        #questionInput:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .sql-display {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            overflow-x: auto;
+        }
+
+        .sql-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .copy-btn {
+            padding: 5px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .explanation {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 400px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e1e4e8;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #c33;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Healthcare Analytics</h1>
+            <p>Ask questions in natural language, get SQL queries and results instantly</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Example Queries Sidebar -->
+            <div class="card">
+                <h2>📚 Example Questions</h2>
+                <div class="example-queries" id="exampleQueries">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading examples...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Query Section -->
+            <div class="card query-section">
+                <h2>💬 Ask a Question</h2>
+                <div class="input-group">
+                    <select id="modelSelect" style="padding: 15px; border: 2px solid #e1e4e8; border-radius: 8px; font-size: 1em; background: white; cursor: pointer;" title="Select AI model">
+                        <optgroup label="GPT-4 Series (Recommended)">
+                            <option value="gpt-4o" selected>GPT-4o (Best quality - RECOMMENDED)</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini (Fast & cheap)</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        </optgroup>
+                        <optgroup label="GPT-5 Series (Latest - 2025)">
+                            <option value="gpt-5">GPT-5 (400K context, 128K output)</option>
+                            <option value="gpt-5-mini">GPT-5 Mini (400K context)</option>
+                            <option value="gpt-5-nano">GPT-5 Nano (Fastest)</option>
+                        </optgroup>
+                        <optgroup label="O-Series Reasoning Models">
+                            <option value="o4-mini">o4-Mini (Latest reasoning)</option>
+                            <option value="o3">o3 (Advanced reasoning)</option>
+                            <option value="o3-mini">o3-Mini (Efficient reasoning)</option>
+                            <option value="o1">o1 (Advanced reasoning)</option>
+                            <option value="o1-mini">o1-Mini (Fast reasoning)</option>
+                            <option value="o1-preview">o1-Preview (Beta)</option>
+                        </optgroup>
+                    </select>
+                    <input
+                        type="text"
+                        id="questionInput"
+                        placeholder="e.g., How many patients have diabetes?"
+                        onkeypress="handleKeyPress(event)"
+                        style="flex: 2;"
+                    >
+                    <button class="btn btn-primary" onclick="executeQuery()" id="executeBtn">
+                        Execute
+                    </button>
+                </div>
+
+                <!-- Results Section -->
+                <div class="results-section" id="resultsSection">
+                    <h2>📊 Results</h2>
+
+                    <div id="explanationDiv" style="display: none;" class="explanation">
+                        <strong>Explanation:</strong>
+                        <p id="explanationText"></p>
+                    </div>
+
+                    <div class="sql-header">
+                        <strong>Generated SQL:</strong>
+                        <button class="copy-btn" onclick="copySql()">Copy SQL</button>
+                    </div>
+                    <div class="sql-display" id="sqlDisplay"></div>
+
+                    <div id="errorDiv" style="display: none;" class="error"></div>
+
+                    <div id="tableContainer" class="table-container"></div>
+
+                    <div class="stats" id="statsDiv"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // Load example queries on page load
+        async function loadExamples() {
+            console.log('Loading examples...');
+            try {
+                const response = await fetch(`${API_BASE}/api/examples`);
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const examples = await response.json();
+                console.log('Loaded examples:', examples.length);
+
+                const container = document.getElementById('exampleQueries');
+                if (!container) {
+                    console.error('Container #exampleQueries not found!');
+                    return;
+                }
+
+                container.innerHTML = examples.map((ex, index) => `
+                    <div class="example-item" data-question-id="${index}">
+                        <div class="question">${ex.question}</div>
+                        <div class="description">${ex.description}</div>
+                        <span class="category-badge">${ex.category}</span>
+                    </div>
+                `).join('');
+
+                // Add click handlers
+                examples.forEach((ex, index) => {
+                    const element = container.querySelector(`[data-question-id="${index}"]`);
+                    if (element) {
+                        element.addEventListener('click', () => setQuestion(ex.question));
+                    }
+                });
+
+                console.log('Examples loaded successfully');
+            } catch (error) {
+                console.error('Failed to load examples:', error);
+                const container = document.getElementById('exampleQueries');
+                if (container) {
+                    container.innerHTML = `<p style="color: #c33; padding: 15px;">Failed to load examples: ${error.message}</p>`;
+                }
+            }
+        }
+
+        function setQuestion(question) {
+            document.getElementById('questionInput').value = question;
+            document.getElementById('questionInput').focus();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                executeQuery();
+            }
+        }
+
+        let skipSpellCheck = false;
+
+        async function executeQuery(forceExecute = false) {
+            const question = document.getElementById('questionInput').value.trim();
+            if (!question) {
+                alert('Please enter a question');
+                return;
+            }
+
+            const executeBtn = document.getElementById('executeBtn');
+            const resultsSection = document.getElementById('resultsSection');
+            const errorDiv = document.getElementById('errorDiv');
+            const sqlDisplay = document.getElementById('sqlDisplay');
+            const tableContainer = document.getElementById('tableContainer');
+            const explanationDiv = document.getElementById('explanationDiv');
+            const explanationText = document.getElementById('explanationText');
+            const statsDiv = document.getElementById('statsDiv');
+
+            // Show loading
+            executeBtn.disabled = true;
+            executeBtn.textContent = 'Executing...';
+            resultsSection.classList.add('show');
+            errorDiv.style.display = 'none';
+            sqlDisplay.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating SQL...</p></div>';
+            tableContainer.innerHTML = '';
+            explanationDiv.style.display = 'none';
+            statsDiv.innerHTML = '';
+
+            try {
+                const model = document.getElementById('modelSelect').value;
+                const response = await fetch(`${API_BASE}/api/query`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: question,
+                        include_explanation: true,
+                        model: model,
+                        skip_spell_check: forceExecute || skipSpellCheck
+                    })
+                });
+
+                const data = await response.json();
+
+                // Handle spell check suggestions
+                if (data.needs_confirmation && data.spell_check) {
+                    handleSpellCheckSuggestion(data);
+                    executeBtn.disabled = false;
+                    executeBtn.textContent = 'Execute';
+                    return;
+                }
+
+                // Handle ambiguity clarification
+                if (data.needs_clarification && data.ambiguity) {
+                    handleAmbiguityClarification(data);
+                    executeBtn.disabled = false;
+                    executeBtn.textContent = 'Execute';
+                    return;
+                }
+
+                if (data.success) {
+                    // Display SQL
+                    sqlDisplay.textContent = data.sql;
+
+                    // Display explanation
+                    if (data.explanation) {
+                        explanationText.textContent = data.explanation;
+                        explanationDiv.style.display = 'block';
+                    }
+
+                    // Display table
+                    if (data.rows && data.rows.length > 0) {
+                        const table = `
+                            <table>
+                                <thead>
+                                    <tr>${data.columns.map(col => `<th>${col}</th>`).join('')}</tr>
+                                </thead>
+                                <tbody>
+                                    ${data.rows.map(row => `
+                                        <tr>${data.columns.map(col => `<td>${formatValue(row[col])}</td>`).join('')}</tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                        tableContainer.innerHTML = table;
+
+                        // Display stats
+                        const truncatedMsg = data.truncated ? ' (truncated)' : '';
+                        statsDiv.innerHTML = `
+                            <span>Rows: ${data.row_count}${truncatedMsg}</span>
+                            <span>Execution time: ${data.execution_time_ms}ms</span>
+                            <span>Model: ${data.model}</span>
+                        `;
+                    } else {
+                        tableContainer.innerHTML = `
+                            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; margin-top: 20px;">
+                                <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
+                                <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">No Records Found</div>
+                                <div style="color: #666;">The query executed successfully but returned no results.</div>
+                            </div>
+                        `;
+                        statsDiv.innerHTML = `
+                            <span>Rows: 0</span>
+                            <span>Execution time: ${data.execution_time_ms}ms</span>
+                            <span>Model: ${data.model}</span>
+                        `;
+                    }
+                } else {
+                    // Display error
+                    errorDiv.textContent = `Error: ${data.error}`;
+                    errorDiv.style.display = 'block';
+                    sqlDisplay.textContent = data.sql || 'No SQL generated';
+                }
+            } catch (error) {
+                errorDiv.textContent = `Network error: ${error.message}`;
+                errorDiv.style.display = 'block';
+                sqlDisplay.textContent = '';
+            } finally {
+                executeBtn.disabled = false;
+                executeBtn.textContent = 'Execute';
+            }
+        }
+
+        function formatValue(value) {
+            if (value === null || value === undefined) {
+                return '<span style="color: #999;">NULL</span>';
+            }
+            if (typeof value === 'number') {
+                return value.toLocaleString();
+            }
+            return value;
+        }
+
+        function copySql() {
+            const sql = document.getElementById('sqlDisplay').textContent;
+            navigator.clipboard.writeText(sql).then(() => {
+                const btn = event.target;
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.textContent = 'Copy SQL';
+                }, 2000);
+            });
+        }
+
+        function handleSpellCheckSuggestion(data) {
+            const errorDiv = document.getElementById('errorDiv');
+            const sqlDisplay = document.getElementById('sqlDisplay');
+
+            // Show suggestion with buttons
+            const correctedQuery = data.spell_check.corrected_query;
+
+            errorDiv.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <strong>⚠️ Possible spelling errors detected</strong><br>
+                    ${data.error}
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="margin-bottom: 10px;">
+                        <strong>Original:</strong><br>
+                        <span style="color: #c33;">${data.natural_language_query}</span>
+                    </div>
+                    <div>
+                        <strong>Did you mean:</strong><br>
+                        <span style="color: #0a0; font-weight: bold;">${correctedQuery}</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="useCorrectedQuery('${correctedQuery.replace(/'/g, "\\'")}')"
+                            style="padding: 10px 20px; background: #0a0; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                        ✓ Use Corrected Version
+                    </button>
+                    <button onclick="executeWithOriginal()"
+                            style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        Use Original Anyway
+                    </button>
+                </div>
+            `;
+            errorDiv.style.display = 'block';
+            sqlDisplay.innerHTML = '';
+        }
+
+        function useCorrectedQuery(correctedQuery) {
+            document.getElementById('questionInput').value = correctedQuery;
+            skipSpellCheck = true;
+            executeQuery(true);
+        }
+
+        function executeWithOriginal() {
+            executeQuery(true);
+        }
+
+        function handleAmbiguityClarification(data) {
+            const errorDiv = document.getElementById('errorDiv');
+            const sqlDisplay = document.getElementById('sqlDisplay');
+
+            const ambiguity = data.ambiguity;
+            const options = ambiguity.clarification_options || [];
+
+            // Build option buttons
+            let optionsHtml = '';
+            options.forEach((option, index) => {
+                optionsHtml += `
+                    <button onclick="selectClarification('${option.refined_query.replace(/'/g, "\\'")}')"
+                            style="display: block; width: 100%; padding: 12px; margin-bottom: 10px; background: white;
+                                   border: 2px solid #667eea; border-radius: 8px; cursor: pointer; text-align: left;
+                                   transition: all 0.2s;"
+                            onmouseover="this.style.background='#f0f0ff'"
+                            onmouseout="this.style.background='white'">
+                        <strong>${option.text}</strong>
+                    </button>
+                `;
+            });
+
+            errorDiv.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <strong>🤔 Your query needs clarification</strong><br>
+                    ${ambiguity.reason}
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong>What did you mean?</strong><br><br>
+                    ${optionsHtml}
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                        <input type="text" id="customClarification" placeholder="Or type your own clarification..."
+                               style="width: 100%; padding: 10px; border: 2px solid #e1e4e8; border-radius: 6px; margin-bottom: 10px;">
+                        <button onclick="selectCustomClarification()"
+                                style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            Use Custom Query
+                        </button>
+                    </div>
+                </div>
+            `;
+            errorDiv.style.display = 'block';
+            sqlDisplay.innerHTML = '';
+        }
+
+        function selectClarification(refinedQuery) {
+            document.getElementById('questionInput').value = refinedQuery;
+            skipSpellCheck = true;
+            executeQueryWithSkips(true, true);
+        }
+
+        function selectCustomClarification() {
+            const customQuery = document.getElementById('customClarification').value.trim();
+            if (!customQuery) {
+                alert('Please enter a query');
+                return;
+            }
+            document.getElementById('questionInput').value = customQuery;
+            skipSpellCheck = true;
+            executeQueryWithSkips(true, true);
+        }
+
+        function executeQueryWithSkips(skipSpell, skipAmbiguity) {
+            const question = document.getElementById('questionInput').value.trim();
+            if (!question) return;
+
+            const executeBtn = document.getElementById('executeBtn');
+            const resultsSection = document.getElementById('resultsSection');
+            const errorDiv = document.getElementById('errorDiv');
+            const sqlDisplay = document.getElementById('sqlDisplay');
+            const tableContainer = document.getElementById('tableContainer');
+
+            executeBtn.disabled = true;
+            executeBtn.textContent = 'Executing...';
+            resultsSection.classList.add('show');
+            errorDiv.style.display = 'none';
+            sqlDisplay.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating SQL...</p></div>';
+            tableContainer.innerHTML = '';
+
+            const model = document.getElementById('modelSelect').value;
+            fetch(`${API_BASE}/api/query`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question: question,
+                    include_explanation: true,
+                    model: model,
+                    skip_spell_check: skipSpell,
+                    skip_ambiguity_check: skipAmbiguity
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('sqlDisplay').textContent = data.sql;
+                    if (data.explanation) {
+                        document.getElementById('explanationText').textContent = data.explanation;
+                        document.getElementById('explanationDiv').style.display = 'block';
+                    }
+                    if (data.rows && data.rows.length > 0) {
+                        const table = `
+                            <table>
+                                <thead>
+                                    <tr>${data.columns.map(col => `<th>${col}</th>`).join('')}</tr>
+                                </thead>
+                                <tbody>
+                                    ${data.rows.map(row => `
+                                        <tr>${data.columns.map(col => `<td>${formatValue(row[col])}</td>`).join('')}</tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                        document.getElementById('tableContainer').innerHTML = table;
+                        const truncatedMsg = data.truncated ? ' (truncated)' : '';
+                        document.getElementById('statsDiv').innerHTML = `
+                            <span>Rows: ${data.row_count}${truncatedMsg}</span>
+                            <span>Execution time: ${data.execution_time_ms}ms</span>
+                            <span>Model: ${data.model}</span>
+                        `;
+                    } else {
+                        document.getElementById('tableContainer').innerHTML = `
+                            <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; margin-top: 20px;">
+                                <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
+                                <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">No Records Found</div>
+                                <div style="color: #666;">The query executed successfully but returned no results.</div>
+                            </div>
+                        `;
+                        document.getElementById('statsDiv').innerHTML = `
+                            <span>Rows: 0</span>
+                            <span>Execution time: ${data.execution_time_ms}ms</span>
+                            <span>Model: ${data.model}</span>
+                        `;
+                    }
+                } else {
+                    errorDiv.textContent = `Error: ${data.error}`;
+                    errorDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                errorDiv.textContent = `Network error: ${error.message}`;
+                errorDiv.style.display = 'block';
+            })
+            .finally(() => {
+                executeBtn.disabled = false;
+                executeBtn.textContent = 'Execute';
+            });
+        }
+
+        // Load examples on page load
+        loadExamples();
+    </script>
+</body>
+</html>
