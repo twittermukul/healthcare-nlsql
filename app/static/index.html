@@ -185,8 +185,9 @@
         }
 
         .example-queries {
-            max-height: 600px;
+            flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .example-item {
@@ -405,7 +406,7 @@
 
         <div class="main-content">
             <!-- Example Queries Sidebar -->
-            <div class="card">
+            <div class="card" style="display: flex; flex-direction: column; height: 100%;">
                 <h2>📚 Example Questions</h2>
                 <div class="example-queries" id="exampleQueries">
                     <div class="loading">
