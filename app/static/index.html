@@ -362,6 +362,153 @@
             margin-top: 5px;
         }
 
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideDown 0.3s;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #e1e4e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #333;
+        }
+
+        .modal-close {
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 30px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #e1e4e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .modal-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .modal-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+
+        .modal-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e1e4e8;
+        }
+
+        .modal-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button:not(:disabled):hover {
+            background: #f0f0f0;
+        }
+
+        .download-btn {
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -438,6 +585,29 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Results Modal -->
+    <div id="resultsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📊 Query Results</h2>
+                <button class="modal-close" onclick="closeResultsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <table class="modal-table" id="modalTable"></table>
+            </div>
+            <div class="modal-footer">
+                <div class="pagination">
+                    <button id="modalPrevBtn" onclick="changeModalPage(-1)">← Previous</button>
+                    <span id="modalPageInfo"></span>
+                    <button id="modalNextBtn" onclick="changeModalPage(1)">Next →</button>
+                </div>
+                <button class="download-btn" id="downloadBtn" onclick="downloadCSV()">
+                    📥 Download CSV
+                </button>
+            </div>
         </div>
     </div>
 
@@ -588,8 +758,18 @@
                 `;
                 resultHTML += tableHTML;
 
+                // Store data globally for modal
+                window.currentResultData = data;
+
                 if (data.rows.length > 5) {
-                    resultHTML += `<div style="font-size: 0.9em; color: #666; margin-top: 8px;">Showing first 5 of ${data.rows.length} rows</div>`;
+                    resultHTML += `
+                        <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 0.9em; color: #666;">Showing first 5 of ${data.rows.length} rows</div>
+                            <button onclick="openResultsModal()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                🔍 View All Results
+                            </button>
+                        </div>
+                    `;
                 }
             } else if (data.success) {
                 resultHTML += `<div style="padding: 20px; text-align: center; color: #666;">✓ Query executed successfully (0 results)</div>`;
@@ -905,6 +1085,107 @@
                 console.error('Clear conversation error:', error);
                 alert('Error clearing conversation: ' + error.message);
             }
+        }
+
+        // ============================================================================
+        // RESULTS MODAL
+        // ============================================================================
+
+        let modalCurrentPage = 1;
+        const modalRowsPerPage = 10;
+
+        function openResultsModal() {
+            const data = window.currentResultData;
+            if (!data || !data.rows) return;
+
+            modalCurrentPage = 1;
+            renderModalTable();
+
+            const modal = document.getElementById('resultsModal');
+            modal.style.display = 'block';
+
+            // Close on outside click
+            modal.onclick = function(event) {
+                if (event.target === modal) {
+                    closeResultsModal();
+                }
+            };
+        }
+
+        function closeResultsModal() {
+            document.getElementById('resultsModal').style.display = 'none';
+        }
+
+        function renderModalTable() {
+            const data = window.currentResultData;
+            if (!data || !data.rows) return;
+
+            const totalPages = Math.ceil(data.rows.length / modalRowsPerPage);
+            const startIdx = (modalCurrentPage - 1) * modalRowsPerPage;
+            const endIdx = Math.min(startIdx + modalRowsPerPage, data.rows.length);
+            const pageRows = data.rows.slice(startIdx, endIdx);
+
+            // Render table
+            const tableHTML = `
+                <thead>
+                    <tr>${data.columns.map(col => `<th>${col}</th>`).join('')}</tr>
+                </thead>
+                <tbody>
+                    ${pageRows.map(row => `
+                        <tr>${data.columns.map(col => `<td>${formatValue(row[col])}</td>`).join('')}</tr>
+                    `).join('')}
+                </tbody>
+            `;
+            document.getElementById('modalTable').innerHTML = tableHTML;
+
+            // Update pagination
+            document.getElementById('modalPageInfo').textContent =
+                `Page ${modalCurrentPage} of ${totalPages} (${data.rows.length} total rows)`;
+
+            document.getElementById('modalPrevBtn').disabled = modalCurrentPage === 1;
+            document.getElementById('modalNextBtn').disabled = modalCurrentPage === totalPages;
+
+            // Show/hide download button based on row count
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.style.display = data.rows.length >= 100 ? 'flex' : 'none';
+        }
+
+        function changeModalPage(delta) {
+            const data = window.currentResultData;
+            if (!data || !data.rows) return;
+
+            const totalPages = Math.ceil(data.rows.length / modalRowsPerPage);
+            modalCurrentPage = Math.max(1, Math.min(modalCurrentPage + delta, totalPages));
+            renderModalTable();
+        }
+
+        function downloadCSV() {
+            const data = window.currentResultData;
+            if (!data || !data.rows) return;
+
+            // Create CSV content
+            const headers = data.columns.join(',');
+            const rows = data.rows.map(row =>
+                data.columns.map(col => {
+                    const value = row[col];
+                    // Escape quotes and wrap in quotes if contains comma
+                    const escaped = String(value).replace(/"/g, '""');
+                    return escaped.includes(',') ? `"${escaped}"` : escaped;
+                }).join(',')
+            ).join('\n');
+
+            const csv = headers + '\n' + rows;
+
+            // Download
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `query_results_${Date.now()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // Load examples on page load
