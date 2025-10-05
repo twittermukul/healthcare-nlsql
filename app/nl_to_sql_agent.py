@@ -47,7 +47,7 @@ class NLToSQLAgent:
         # Build view schemas text (ACTUAL COLUMNS - not hardcoded)
         key_views = [
             'vw_patients_2025',
-            'vw_patient_annual_costs_2025',
+            'vw_patient_monthly_costs_2025',
             'vw_patient_conditions_2025',
             'vw_er_visits_2025',
             'vw_patient_er_summary_2025',
@@ -149,8 +149,9 @@ WHERE c.condition_name IN ('Type 2 diabetes', 'Type 1 diabetes')
 LIMIT 100;
 
 Q: "Top 10 most expensive patients"
-A: SELECT patient_id, total_cost_2025
-FROM vw_patient_annual_costs_2025
+A: SELECT patient_id, SUM(total_cost) as total_cost_2025
+FROM vw_patient_monthly_costs_2025
+GROUP BY patient_id
 ORDER BY total_cost_2025 DESC
 LIMIT 10;
 
@@ -173,8 +174,12 @@ A: SELECT
 FROM vw_osteoporosis_screening_2025;
 
 Q: "Average cost per patient"
-A: SELECT ROUND(AVG(total_cost_2025), 2) AS avg_cost
-FROM vw_patient_annual_costs_2025;
+A: SELECT ROUND(AVG(patient_total), 2) AS avg_cost
+FROM (
+  SELECT patient_id, SUM(total_cost) as patient_total
+  FROM vw_patient_monthly_costs_2025
+  GROUP BY patient_id
+) subq;
 
 Q: "Show me cancer patients by cancer type"
 A: SELECT * FROM vw_cancer_prevalence_2025;

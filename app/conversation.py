@@ -122,9 +122,9 @@ Results: {results.get('row_count', 0)} rows
 Sample data: {str(results.get('rows', [])[:5])}
 
 AVAILABLE DATA IN DATABASE (key views and columns):
-- vw_patients_2025: patient_id, age_years, gender, race, ethnicity, state, county_name
+- vw_patients_2025: patient_id, age_years, age_bucket_category, gender, race, ethnicity, state, county_name
 - vw_patient_conditions_2025: patient_id, condition_name (diagnoses)
-- vw_patient_annual_costs_2025: patient_id, total_cost_2025
+- vw_patient_monthly_costs_2025: patient_id, month, year, total_cost, paid_amt, er_visits, ip_admits, op_visits
 - vw_er_visits_2025: patient_id, visit_date, primary_dx_code, discharge_status, provider_name, facility_name
 - vw_patient_er_summary_2025: patient_id, er_visits_2025 (count)
 - vw_cancer_prevalence_2025: cancer_type, patient_count, prevalence_rate
