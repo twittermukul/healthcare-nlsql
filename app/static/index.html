@@ -293,6 +293,19 @@
             <!-- Main Query Section -->
             <div class="card query-section">
                 <h2>💬 Ask a Question</h2>
+
+                <!-- Conversation Mode Toggle -->
+                <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                    <label style="display: flex; align-items: center; cursor: pointer; gap: 8px;">
+                        <input type="checkbox" id="conversationMode" onchange="toggleConversationMode()" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-weight: 600; color: #333;">🤖 Conversation Mode</span>
+                    </label>
+                    <span style="color: #666; font-size: 0.9em;">Get intelligent follow-up suggestions and insights</span>
+                    <button id="clearConversationBtn" onclick="clearConversation()" style="margin-left: auto; padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; display: none;">
+                        🗑️ Clear Session
+                    </button>
+                </div>
+
                 <div class="input-group">
                     <select id="modelSelect" style="padding: 15px; border: 2px solid #e1e4e8; border-radius: 8px; font-size: 1em; background: white; cursor: pointer;" title="Select AI model">
                         <optgroup label="GPT-4 Series (Recommended)">
@@ -324,6 +337,19 @@
                     <button class="btn btn-primary" onclick="executeQuery()" id="executeBtn">
                         Execute
                     </button>
+                </div>
+
+                <!-- Conversation Insights Panel -->
+                <div id="conversationInsights" style="display: none; margin-top: 15px; padding: 20px; background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-radius: 8px; border-left: 4px solid #667eea;">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 10px; font-size: 1.1em;">💡 Insights</div>
+                    <div id="insightsText" style="color: #555; line-height: 1.6; margin-bottom: 15px;"></div>
+
+                    <div id="followupSuggestions" style="display: none;">
+                        <div style="font-weight: 600; color: #333; margin-bottom: 10px;">🔍 Suggested Follow-ups</div>
+                        <div id="suggestionsList"></div>
+                    </div>
+
+                    <div id="nudgeText" style="display: none; margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.7); border-radius: 6px; font-style: italic; color: #667eea;"></div>
                 </div>
 
                 <!-- Results Section -->
@@ -453,15 +479,26 @@
 
             try {
                 const model = document.getElementById('modelSelect').value;
-                const response = await fetch(`${API_BASE}/api/query`, {
+
+                // Use conversation endpoint if conversation mode is enabled
+                const endpoint = conversationModeEnabled ? '/api/conversation/query' : '/api/query';
+
+                const requestBody = {
+                    question: question,
+                    include_explanation: true,
+                    model: model,
+                    skip_spell_check: forceExecute || skipSpellCheck
+                };
+
+                // Add session_id for conversation mode
+                if (conversationModeEnabled && currentSessionId) {
+                    requestBody.session_id = currentSessionId;
+                }
+
+                const response = await fetch(`${API_BASE}${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        question: question,
-                        include_explanation: true,
-                        model: model,
-                        skip_spell_check: forceExecute || skipSpellCheck
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 const data = await response.json();
@@ -493,6 +530,11 @@
                     if (data.explanation) {
                         explanationText.textContent = data.explanation;
                         explanationDiv.style.display = 'block';
+                    }
+
+                    // Display conversation insights if in conversation mode
+                    if (conversationModeEnabled && data.conversation) {
+                        displayConversationInsights(data.conversation);
                     }
 
                     // Store data for pagination and render
@@ -927,6 +969,120 @@
                 executeBtn.disabled = false;
                 executeBtn.textContent = 'Execute';
             });
+        }
+
+        // ============================================================================
+        // CONVERSATION MODE
+        // ============================================================================
+
+        let conversationModeEnabled = false;
+        let currentSessionId = null;
+
+        function toggleConversationMode() {
+            conversationModeEnabled = document.getElementById('conversationMode').checked;
+            const clearBtn = document.getElementById('clearConversationBtn');
+
+            if (conversationModeEnabled) {
+                // Generate new session ID
+                currentSessionId = `session_${Date.now()}`;
+                clearBtn.style.display = 'inline-block';
+                console.log('Conversation mode enabled, session:', currentSessionId);
+            } else {
+                clearBtn.style.display = 'none';
+                document.getElementById('conversationInsights').style.display = 'none';
+                console.log('Conversation mode disabled');
+            }
+        }
+
+        function displayConversationInsights(conversation) {
+            if (!conversationModeEnabled || !conversation) return;
+
+            const insightsPanel = document.getElementById('conversationInsights');
+            const insightsText = document.getElementById('insightsText');
+            const suggestionsDiv = document.getElementById('followupSuggestions');
+            const suggestionsList = document.getElementById('suggestionsList');
+            const nudgeDiv = document.getElementById('nudgeText');
+
+            // Show insights
+            if (conversation.insights) {
+                insightsText.textContent = conversation.insights;
+                insightsPanel.style.display = 'block';
+            }
+
+            // Show suggestions as clickable chips
+            if (conversation.suggestions && conversation.suggestions.length > 0) {
+                suggestionsList.innerHTML = conversation.suggestions.map((suggestion, idx) => `
+                    <div onclick="executeSuggestion('${suggestion.question.replace(/'/g, "\\'")}')"
+                         style="padding: 12px 16px; margin-bottom: 10px; background: white; border: 2px solid #667eea;
+                                border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                         onmouseover="this.style.background='#f0f0ff'; this.style.transform='translateX(5px)';"
+                         onmouseout="this.style.background='white'; this.style.transform='translateX(0)';">
+                        <div style="font-weight: 600; color: #667eea; margin-bottom: 5px;">
+                            ${idx + 1}. ${suggestion.question}
+                        </div>
+                        <div style="font-size: 0.9em; color: #666;">
+                            ${suggestion.reasoning}
+                        </div>
+                    </div>
+                `).join('');
+                suggestionsDiv.style.display = 'block';
+            } else {
+                suggestionsDiv.style.display = 'none';
+            }
+
+            // Show nudge
+            if (conversation.nudge) {
+                nudgeDiv.textContent = '💭 ' + conversation.nudge;
+                nudgeDiv.style.display = 'block';
+            } else {
+                nudgeDiv.style.display = 'none';
+            }
+        }
+
+        function executeSuggestion(question) {
+            document.getElementById('questionInput').value = question;
+            skipSpellCheck = true;
+            executeQuery(true);
+        }
+
+        async function clearConversation() {
+            if (!currentSessionId) return;
+
+            if (!confirm('Clear conversation history? This will reset the context.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/conversation/${currentSessionId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    // Hide insights panel
+                    document.getElementById('conversationInsights').style.display = 'none';
+
+                    // Generate new session
+                    currentSessionId = `session_${Date.now()}`;
+                    console.log('Conversation cleared, new session:', currentSessionId);
+
+                    // Show confirmation
+                    const insightsPanel = document.getElementById('conversationInsights');
+                    insightsPanel.style.display = 'block';
+                    insightsPanel.innerHTML = `
+                        <div style="text-align: center; color: #28a745; font-weight: 600;">
+                            ✓ Conversation history cleared. Starting fresh!
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        insightsPanel.style.display = 'none';
+                    }, 3000);
+                } else {
+                    alert('Failed to clear conversation');
+                }
+            } catch (error) {
+                console.error('Clear conversation error:', error);
+                alert('Error clearing conversation: ' + error.message);
+            }
         }
 
         // Load examples on page load
