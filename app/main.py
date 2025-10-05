@@ -246,12 +246,32 @@ async def conversation_query(request: QueryRequest):
                     error=spell_checker.format_suggestion_message(spell_check)
                 )
 
+        # Get conversation context if in conversation mode
+        previous_sql = None
+        previous_query = None
+        if session_id:
+            history = conversation_manager.get_conversation_history(session_id, limit=1)
+            if history and len(history) >= 2:
+                # Get the last assistant message which contains SQL
+                for msg in reversed(history):
+                    if msg.get("role") == "assistant" and "Generated SQL:" in msg.get("content", ""):
+                        content = msg.get("content", "")
+                        if "Generated SQL:" in content:
+                            sql_part = content.split("Generated SQL:")[1].split("\n")[0].strip()
+                            previous_sql = sql_part
+                        if "User asked:" in content:
+                            query_part = content.split("User asked:")[1].split("\n")[0].strip().strip('"')
+                            previous_query = query_part
+                        break
+
         # Execute the query (this runs SQL and gets results)
         result = nl_to_sql_agent.execute_query(
             natural_language_query=request.question,
             include_explanation=request.include_explanation,
             model=request.model,
-            skip_ambiguity_check=request.skip_ambiguity_check
+            skip_ambiguity_check=request.skip_ambiguity_check,
+            previous_sql=previous_sql,
+            previous_query=previous_query
         )
 
         # Add execution time

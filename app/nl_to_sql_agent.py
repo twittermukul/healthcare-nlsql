@@ -319,7 +319,9 @@ Output: {"is_ambiguous": true, "reason": "Top by which metric? And which cancer 
         natural_language_query: str,
         include_explanation: bool = False,
         model: Optional[str] = None,
-        skip_ambiguity_check: bool = False
+        skip_ambiguity_check: bool = False,
+        previous_sql: Optional[str] = None,
+        previous_query: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate SQL from natural language query
@@ -344,9 +346,52 @@ Output: {"is_ambiguous": true, "reason": "Top by which metric? And which cancer 
                         "ambiguity": ambiguity_check,
                         "error": ambiguity_check.get("reason", "Query needs clarification")
                     }
+            # Build system prompt with conversational context
+            system_prompt = self._build_system_prompt()
+
+            # Add conversational context instructions if previous SQL exists
+            if previous_sql and previous_query:
+                context_prompt = f"""
+
+CONVERSATIONAL CONTEXT - CRITICAL:
+You are in a drill-down conversation. The user previously asked: "{previous_query}"
+
+Previous SQL query:
+{previous_sql}
+
+FOLLOW-UP DETECTION RULES:
+- If the current question contains: "these", "those", "them", "their", "for them", "what", "which", "breakdown", "common", "analyze"
+- AND the question builds on the previous query (not a completely new question)
+- THEN maintain the patient cohort from the previous query using a CTE
+
+CONTEXT-AWARE QUERY PATTERN:
+WITH previous_cohort AS (
+  {previous_sql}
+)
+SELECT ...
+FROM [relevant_table]
+WHERE patient_id IN (SELECT patient_id FROM previous_cohort)
+...
+
+EXAMPLES:
+Previous: "Show me patients with 3 or more ER visits" (returned 47 patients)
+Current: "What are the common diagnoses for these ER visits?"
+→ Use CTE to analyze ONLY those 47 patients' diagnoses
+
+Previous: "Show me diabetic patients over 65"
+Current: "What's their average cost?"
+→ Use CTE to get cost for ONLY those diabetic patients over 65
+
+IMPORTANT:
+- If it's a follow-up/drill-down → USE the CTE pattern
+- If it's a completely new question → DON'T use the CTE
+- When using CTE, ensure the previous query returns patient_id column
+"""
+                system_prompt += context_prompt
+
             # Build messages
             messages = [
-                {"role": "system", "content": self._build_system_prompt()},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": natural_language_query}
             ]
 
@@ -493,7 +538,9 @@ Output: {"is_ambiguous": true, "reason": "Top by which metric? And which cancer 
         natural_language_query: str,
         include_explanation: bool = False,
         model: Optional[str] = None,
-        skip_ambiguity_check: bool = False
+        skip_ambiguity_check: bool = False,
+        previous_sql: Optional[str] = None,
+        previous_query: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate SQL from NL query and execute it
@@ -508,7 +555,14 @@ Output: {"is_ambiguous": true, "reason": "Top by which metric? And which cancer 
             Dict with sql, results, explanation, etc.
         """
         # Generate SQL
-        sql_result = self.generate_sql(natural_language_query, include_explanation, model, skip_ambiguity_check)
+        sql_result = self.generate_sql(
+            natural_language_query,
+            include_explanation,
+            model,
+            skip_ambiguity_check,
+            previous_sql,
+            previous_query
+        )
 
         if not sql_result.get("success"):
             return sql_result
