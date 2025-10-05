@@ -14,6 +14,7 @@ class QueryRequest(BaseModel):
     model: Optional[str] = Field(default=None, description="OpenAI model to use (gpt-4o, gpt-4o-mini, gpt-5)")
     skip_spell_check: bool = Field(default=False, description="Skip spell checking")
     skip_ambiguity_check: bool = Field(default=False, description="Skip ambiguity checking")
+    session_id: Optional[str] = Field(default=None, description="Conversation session ID for context retention")
 
 
 class QueryResponse(BaseModel):

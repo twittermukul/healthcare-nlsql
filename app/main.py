@@ -14,6 +14,7 @@ from config import settings
 from database import db_service
 from nl_to_sql_agent import nl_to_sql_agent
 from spell_checker import spell_checker
+from conversation import conversation_manager
 from models import (
     QueryRequest,
     QueryResponse,
@@ -207,6 +208,95 @@ async def generate_sql_only(request: QueryRequest):
         return result
     except Exception as e:
         logger.error(f"SQL generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# CONVERSATION MODE ENDPOINTS
+# ============================================================================
+
+@app.post("/api/conversation/query")
+async def conversation_query(request: QueryRequest):
+    """
+    Execute query in conversation mode with intelligent follow-ups
+
+    This endpoint:
+    1. Executes the query like /api/query
+    2. Maintains conversation history
+    3. Returns intelligent follow-up suggestions
+    4. Provides insights and guidance
+    """
+    try:
+        # Get or create session ID (from header or generate)
+        session_id = request.session_id if hasattr(request, 'session_id') else f"session_{int(time.time())}"
+
+        # Execute the query
+        result = nl_to_sql_agent.generate_sql(
+            natural_language_query=request.question,
+            include_explanation=request.include_explanation,
+            model=request.model,
+            skip_ambiguity_check=request.skip_ambiguity_check
+        )
+
+        # If successful, get intelligent follow-ups
+        if result.get("success"):
+            # Add to conversation history
+            conversation_manager.add_query_result(
+                session_id=session_id,
+                query=request.question,
+                sql=result.get("sql", ""),
+                results=result
+            )
+
+            # Get intelligent follow-up suggestions
+            followup = await conversation_manager.get_intelligent_followup(
+                session_id=session_id,
+                query=request.question,
+                results=result,
+                model=request.model or settings.OPENAI_MODEL
+            )
+
+            # Add follow-up to response
+            result["conversation"] = {
+                "session_id": session_id,
+                "insights": followup.get("insights", ""),
+                "suggestions": followup.get("suggestions", []),
+                "nudge": followup.get("nudge", ""),
+                "history_count": len(conversation_manager.get_conversation_history(session_id))
+            }
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Conversation query error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/conversation/{session_id}/history")
+async def get_conversation_history(session_id: str, limit: int = 10):
+    """Get conversation history for a session"""
+    try:
+        history = conversation_manager.get_conversation_history(session_id, limit)
+        summary = conversation_manager.get_session_summary(session_id)
+
+        return {
+            "session_id": session_id,
+            "history": history,
+            "summary": summary
+        }
+    except Exception as e:
+        logger.error(f"Get history error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/conversation/{session_id}")
+async def clear_conversation(session_id: str):
+    """Clear conversation history for a session"""
+    try:
+        conversation_manager.clear_session(session_id)
+        return {"success": True, "message": f"Conversation {session_id} cleared"}
+    except Exception as e:
+        logger.error(f"Clear conversation error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
