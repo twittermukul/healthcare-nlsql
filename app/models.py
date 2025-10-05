@@ -36,6 +36,7 @@ class QueryResponse(BaseModel):
     needs_confirmation: bool = False
     needs_clarification: bool = False
     ambiguity: Optional[Dict[str, Any]] = None
+    conversation: Optional[Dict[str, Any]] = None  # Conversation mode insights and suggestions
 
 
 class SQLRequest(BaseModel):

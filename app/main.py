@@ -260,6 +260,8 @@ async def conversation_query(request: QueryRequest):
 
         # If successful, get intelligent follow-ups
         if result.get("success"):
+            logger.info(f"Conversation mode: Adding to history for session {session_id}")
+
             # Add to conversation history
             conversation_manager.add_query_result(
                 session_id=session_id,
@@ -267,6 +269,8 @@ async def conversation_query(request: QueryRequest):
                 sql=result.get("sql", ""),
                 results=result
             )
+
+            logger.info(f"Conversation mode: Getting intelligent follow-ups for session {session_id}")
 
             # Get intelligent follow-up suggestions
             followup = await conversation_manager.get_intelligent_followup(
@@ -276,6 +280,8 @@ async def conversation_query(request: QueryRequest):
                 model=request.model or settings.OPENAI_MODEL
             )
 
+            logger.info(f"Conversation mode: Followup received - insights: {bool(followup.get('insights'))}, suggestions: {len(followup.get('suggestions', []))}")
+
             # Add follow-up to response
             result["conversation"] = {
                 "session_id": session_id,
@@ -284,6 +290,8 @@ async def conversation_query(request: QueryRequest):
                 "nudge": followup.get("nudge", ""),
                 "history_count": len(conversation_manager.get_conversation_history(session_id))
             }
+
+            logger.info(f"Conversation mode: Response prepared with conversation data")
 
         return QueryResponse(**result)
 
