@@ -725,6 +725,15 @@
                 // Remove loading message
                 removeLoadingMessage();
 
+                // Debug logging
+                console.log('📥 Response received:', {
+                    success: data.success,
+                    hasConversation: !!data.conversation,
+                    conversationMode: conversationModeEnabled,
+                    insights: data.conversation?.insights?.substring(0, 50),
+                    suggestionsCount: data.conversation?.suggestions?.length
+                });
+
                 // TODO: Handle spell check and ambiguity in chat UI later
 
                 // Add assistant response to chat
@@ -1160,16 +1169,26 @@
         function toggleConversationMode() {
             conversationModeEnabled = document.getElementById('conversationMode').checked;
             const clearBtn = document.getElementById('clearConversationBtn');
+            const chatHistory = document.getElementById('chatHistory');
 
             if (conversationModeEnabled) {
                 // Generate new session ID
                 currentSessionId = `session_${Date.now()}`;
                 clearBtn.style.display = 'inline-block';
-                console.log('Conversation mode enabled, session:', currentSessionId);
+                console.log('✅ Conversation mode ENABLED, session:', currentSessionId);
+
+                // Add visual indicator
+                const indicator = document.createElement('div');
+                indicator.id = 'convoModeIndicator';
+                indicator.style.cssText = 'text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px; border-radius: 8px; margin: 10px; font-weight: 600;';
+                indicator.innerHTML = '🤖 Conversation Mode Active - You\'ll get intelligent insights and suggestions!';
+                chatHistory.appendChild(indicator);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
             } else {
                 clearBtn.style.display = 'none';
-                document.getElementById('conversationInsights').style.display = 'none';
-                console.log('Conversation mode disabled');
+                const indicator = document.getElementById('convoModeIndicator');
+                if (indicator) indicator.remove();
+                console.log('❌ Conversation mode DISABLED');
             }
         }
 
