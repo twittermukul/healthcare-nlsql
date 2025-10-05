@@ -114,16 +114,30 @@ Sample data: {results.get('rows', [])[:3] if results.get('rows') else 'No data'}
         """
         self.create_session(session_id)
 
-        # Build context message
+        # Build context message with available schema context
         context_msg = f"""The user just executed this query:
 Question: "{query}"
+SQL: {results.get('sql', '')}
 Results: {results.get('row_count', 0)} rows
 Sample data: {str(results.get('rows', [])[:5])}
 
+AVAILABLE DATA IN DATABASE (key views and columns):
+- vw_patients_2025: patient_id, age_years, gender, race, ethnicity, state, county_name
+- vw_patient_conditions_2025: patient_id, condition_name (diagnoses)
+- vw_patient_annual_costs_2025: patient_id, total_cost_2025
+- vw_er_visits_2025: patient_id, visit_date, primary_dx_code, discharge_status, provider_name, facility_name
+- vw_patient_er_summary_2025: patient_id, er_visits_2025 (count)
+- vw_cancer_prevalence_2025: cancer_type, patient_count, prevalence_rate
+
+CRITICAL RULES:
+1. ONLY suggest follow-up questions that can be answered with the available data above
+2. DO NOT suggest questions about: follow-up care, readmissions, treatments, procedures, medications, lab results, or anything not in the schema
+3. Focus on: demographics, costs, visit patterns, diagnoses, geographic analysis, trending
+
 Based on these results:
 1. What are 2-3 key insights or patterns?
-2. What are 3 relevant follow-up questions the user should explore?
-3. What's one actionable recommendation or deeper analysis to pursue?
+2. What are 3 relevant follow-up questions the user should explore (ONLY using available data)?
+3. What's one actionable recommendation or deeper analysis to pursue (with available data)?
 
 Return as JSON:
 {{
