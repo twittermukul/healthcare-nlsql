@@ -56,15 +56,21 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            overflow: hidden;
+        }
+
+        .card.chat-container {
+            padding: 0;
         }
 
         .chat-history {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 25px;
             background: #f8f9fa;
             border-radius: 12px 12px 0 0;
             scroll-behavior: smooth;
+            min-height: 0;
         }
 
         .chat-message {
@@ -171,9 +177,10 @@
 
         .chat-input-area {
             background: white;
-            padding: 20px;
+            padding: 25px;
             border-radius: 0 0 12px 12px;
             border-top: 1px solid #e1e4e8;
+            flex-shrink: 0;
         }
 
         .card {
