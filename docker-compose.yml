@@ -75,7 +75,7 @@ services:
       API_WORKERS: ${API_WORKERS:-1}
 
       # CORS Configuration
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8001}
 
       # App Configuration
       DEBUG: ${DEBUG:-false}
@@ -92,7 +92,7 @@ services:
       BLOCKED_KEYWORDS: ${BLOCKED_KEYWORDS:-DROP,DELETE,TRUNCATE,ALTER,CREATE,INSERT,UPDATE}
 
     ports:
-      - "8000:8000"
+      - "8001:8000"  # External:Internal - Maps host port 8001 to container port 8000
 
     depends_on:
       postgres:
@@ -101,7 +101,7 @@ services:
         condition: service_healthy
 
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
