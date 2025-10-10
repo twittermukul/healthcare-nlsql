@@ -15,6 +15,7 @@ from database import db_service
 from nl_to_sql_agent import nl_to_sql_agent
 from spell_checker import spell_checker
 from conversation import conversation_manager
+from mongodb import mongodb_service
 from models import (
     QueryRequest,
     QueryResponse,
@@ -23,7 +24,9 @@ from models import (
     SemanticTerm,
     QueryTemplate,
     ExampleQuery,
-    EXAMPLE_QUERIES
+    EXAMPLE_QUERIES,
+    FeedbackTicketRequest,
+    FeedbackTicketResponse
 )
 
 # Configure logging
@@ -354,6 +357,104 @@ async def clear_conversation(session_id: str):
 
 
 # ============================================================================
+# FEEDBACK TICKET ENDPOINTS
+# ============================================================================
+
+@app.post("/api/feedback/ticket", response_model=FeedbackTicketResponse)
+async def submit_feedback_ticket(request: FeedbackTicketRequest):
+    """
+    Submit a feedback ticket for incorrect or problematic responses
+
+    Users can report issues with:
+    - Incorrect SQL generation
+    - Wrong results
+    - Performance problems
+    - Feature requests
+    """
+    try:
+        # Prepare ticket data
+        ticket_data = {
+            "session_id": request.session_id,
+            "user_query": request.user_query,
+            "sql_generated": request.sql_generated,
+            "response_data": request.response_data,
+            "issue_description": request.issue_description,
+            "contact_email": request.contact_email,
+            "model_used": request.model_used,
+            "execution_time_ms": request.execution_time_ms,
+            "row_count": request.row_count
+        }
+
+        # Create ticket in MongoDB
+        ticket_id = await mongodb_service.create_ticket(ticket_data)
+
+        logger.info(f"Feedback ticket created: {ticket_id} for query: {request.user_query[:50]}...")
+
+        return FeedbackTicketResponse(
+            success=True,
+            ticket_id=ticket_id,
+            message="Feedback ticket submitted successfully. We'll review it and get back to you if you provided contact information.",
+            created_at=datetime.utcnow()
+        )
+
+    except Exception as e:
+        logger.error(f"Error creating feedback ticket: {str(e)}")
+        return FeedbackTicketResponse(
+            success=False,
+            message=f"Failed to submit feedback ticket: {str(e)}"
+        )
+
+
+@app.get("/api/feedback/tickets")
+async def get_feedback_tickets(
+    status: str = None,
+    limit: int = 100,
+    skip: int = 0
+):
+    """
+    Get all feedback tickets (admin endpoint)
+
+    Query parameters:
+    - status: Filter by status (open/resolved/closed)
+    - limit: Maximum tickets to return (default 100)
+    - skip: Number of tickets to skip for pagination
+    """
+    try:
+        tickets = await mongodb_service.get_all_tickets(status=status, limit=limit, skip=skip)
+        stats = await mongodb_service.get_ticket_stats()
+
+        return {
+            "success": True,
+            "tickets": tickets,
+            "count": len(tickets),
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Error fetching feedback tickets: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/feedback/ticket/{ticket_id}")
+async def get_feedback_ticket(ticket_id: str):
+    """Get a specific feedback ticket by ID"""
+    try:
+        ticket = await mongodb_service.get_ticket(ticket_id)
+
+        if not ticket:
+            raise HTTPException(status_code=404, detail=f"Ticket {ticket_id} not found")
+
+        return {
+            "success": True,
+            "ticket": ticket
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching ticket {ticket_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 
@@ -380,11 +481,18 @@ async def startup_event():
     """Run on application startup"""
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
 
-    # Test database connection
+    # Test PostgreSQL connection
     if db_service.test_connection():
-        logger.info("✓ Database connection successful")
+        logger.info("✓ PostgreSQL connection successful")
     else:
-        logger.error("✗ Database connection failed")
+        logger.error("✗ PostgreSQL connection failed")
+
+    # Connect to MongoDB
+    try:
+        await mongodb_service.connect()
+        logger.info("✓ MongoDB connection successful")
+    except Exception as e:
+        logger.error(f"✗ MongoDB connection failed: {str(e)}")
 
     # Check semantic dictionary loaded
     dict_count = len(nl_to_sql_agent.semantic_dictionary)
@@ -396,6 +504,9 @@ async def startup_event():
 async def shutdown_event():
     """Run on application shutdown"""
     logger.info("Shutting down application")
+
+    # Disconnect MongoDB
+    await mongodb_service.disconnect()
 
 
 # ============================================================================

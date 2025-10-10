@@ -143,6 +143,11 @@ class Settings(BaseSettings):
     DB_USER: str = "postgres"
     DB_PASSWORD: str = ""
 
+    # MongoDB
+    MONGODB_HOST: str = "localhost"
+    MONGODB_PORT: int = 27017
+    MONGODB_DB: str = "nlsql_feedback"
+
     # API
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000

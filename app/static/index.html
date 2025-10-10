@@ -611,6 +611,63 @@
         </div>
     </div>
 
+    <!-- Feedback Ticket Modal -->
+    <div id="feedbackModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>🚨 Report Issue</h2>
+                <button class="modal-close" onclick="closeFeedbackModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
+                <div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                    <strong>Before submitting:</strong> This will help us improve the system. Your feedback is valuable!
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Your Question:</label>
+                    <div id="feedbackQuery" style="padding: 10px; background: #f8f9fa; border-radius: 6px; font-family: monospace; font-size: 0.9em;"></div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Generated SQL:</label>
+                    <div id="feedbackSQL" style="padding: 10px; background: #f8f9fa; border-radius: 6px; font-family: monospace; font-size: 0.85em; max-height: 150px; overflow-y: auto;"></div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label for="issueDescription" style="display: block; font-weight: 600; margin-bottom: 5px;">
+                        Describe the Issue: <span style="color: red;">*</span>
+                    </label>
+                    <textarea id="issueDescription" rows="5"
+                        placeholder="Please describe what went wrong (e.g., incorrect results, wrong SQL, performance issue)..."
+                        style="width: 100%; padding: 10px; border: 2px solid #e1e4e8; border-radius: 6px; font-family: inherit; resize: vertical;"
+                        required></textarea>
+                    <div style="font-size: 0.85em; color: #666; margin-top: 5px;">Minimum 10 characters</div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label for="contactEmail" style="display: block; font-weight: 600; margin-bottom: 5px;">
+                        Contact Email (Optional):
+                    </label>
+                    <input type="email" id="contactEmail"
+                        placeholder="your.email@example.com"
+                        style="width: 100%; padding: 10px; border: 2px solid #e1e4e8; border-radius: 6px;">
+                    <div style="font-size: 0.85em; color: #666; margin-top: 5px;">We'll reach out if we need more information</div>
+                </div>
+
+                <div id="feedbackError" style="display: none; padding: 10px; background: #f8d7da; color: #721c24; border-radius: 6px; margin-bottom: 15px;"></div>
+                <div id="feedbackSuccess" style="display: none; padding: 10px; background: #d4edda; color: #155724; border-radius: 6px; margin-bottom: 15px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeFeedbackModal()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Cancel
+                </button>
+                <button onclick="submitFeedbackTicket()" id="submitFeedbackBtn" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Submit Ticket
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '';
 
@@ -800,9 +857,24 @@
                 }
             }
 
-            // Stats
+            // Stats and Report Issue button
             if (data.execution_time_ms) {
-                resultHTML += `<div style="font-size: 0.85em; color: #999; margin-top: 12px;">${data.model} • ${data.execution_time_ms}ms</div>`;
+                resultHTML += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                        <div style="font-size: 0.85em; color: #999;">${data.model} • ${data.execution_time_ms}ms</div>
+                        <button onclick='openFeedbackModal(${JSON.stringify({
+                            query: data.natural_language_query,
+                            sql: data.sql,
+                            model: data.model,
+                            execution_time_ms: data.execution_time_ms,
+                            row_count: data.row_count,
+                            session_id: currentSessionId
+                        })})'
+                        style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85em; font-weight: 600;">
+                            🚨 Report Issue
+                        </button>
+                    </div>
+                `;
             }
 
             messageDiv.innerHTML = `
@@ -1187,6 +1259,119 @@
             link.click();
             document.body.removeChild(link);
         }
+
+        // ============================================================================
+        // FEEDBACK TICKET FUNCTIONS
+        // ============================================================================
+
+        let currentFeedbackData = {};
+
+        function openFeedbackModal(data) {
+            console.log('Opening feedback modal with data:', data);
+            currentFeedbackData = data;
+
+            // Populate modal fields
+            document.getElementById('feedbackQuery').textContent = data.query || 'N/A';
+            document.getElementById('feedbackSQL').textContent = data.sql || 'N/A';
+
+            // Clear form
+            document.getElementById('issueDescription').value = '';
+            document.getElementById('contactEmail').value = '';
+            document.getElementById('feedbackError').style.display = 'none';
+            document.getElementById('feedbackSuccess').style.display = 'none';
+
+            // Show modal
+            document.getElementById('feedbackModal').style.display = 'flex';
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').style.display = 'none';
+            currentFeedbackData = {};
+        }
+
+        async function submitFeedbackTicket() {
+            const issueDescription = document.getElementById('issueDescription').value.trim();
+            const contactEmail = document.getElementById('contactEmail').value.trim();
+
+            // Validation
+            if (issueDescription.length < 10) {
+                showFeedbackError('Please provide a detailed description (at least 10 characters)');
+                return;
+            }
+
+            // Disable submit button
+            const submitBtn = document.getElementById('submitFeedbackBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            try {
+                const requestData = {
+                    session_id: currentFeedbackData.session_id,
+                    user_query: currentFeedbackData.query,
+                    sql_generated: currentFeedbackData.sql,
+                    issue_description: issueDescription,
+                    contact_email: contactEmail || null,
+                    model_used: currentFeedbackData.model,
+                    execution_time_ms: currentFeedbackData.execution_time_ms,
+                    row_count: currentFeedbackData.row_count
+                };
+
+                console.log('Submitting feedback ticket:', requestData);
+
+                const response = await fetch(`${API_BASE}/api/feedback/ticket`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showFeedbackSuccess(`✓ Ticket submitted successfully! Ticket ID: ${result.ticket_id}`);
+                    // Close modal after 3 seconds
+                    setTimeout(() => {
+                        closeFeedbackModal();
+                    }, 3000);
+                } else {
+                    showFeedbackError(result.message || 'Failed to submit ticket');
+                }
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+                showFeedbackError('Network error: Could not submit ticket. Please try again.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Ticket';
+            }
+        }
+
+        function showFeedbackError(message) {
+            const errorDiv = document.getElementById('feedbackError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('feedbackSuccess').style.display = 'none';
+        }
+
+        function showFeedbackSuccess(message) {
+            const successDiv = document.getElementById('feedbackSuccess');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            document.getElementById('feedbackError').style.display = 'none';
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const feedbackModal = document.getElementById('feedbackModal');
+            const resultsModal = document.getElementById('resultsModal');
+
+            if (event.target === feedbackModal) {
+                closeFeedbackModal();
+            }
+            if (event.target === resultsModal) {
+                closeResultsModal();
+            }
+        };
 
         // Load examples on page load
         loadExamples();

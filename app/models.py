@@ -81,6 +81,27 @@ class ExampleQuery(BaseModel):
     category: str
 
 
+class FeedbackTicketRequest(BaseModel):
+    """Request model for submitting feedback ticket"""
+    session_id: Optional[str] = Field(default=None, description="Conversation session ID")
+    user_query: str = Field(..., description="The user's original question")
+    sql_generated: Optional[str] = Field(default=None, description="The SQL query that was generated")
+    response_data: Optional[Dict[str, Any]] = Field(default=None, description="The response data received")
+    issue_description: str = Field(..., description="Description of the issue/feedback", min_length=10)
+    contact_email: Optional[str] = Field(default=None, description="User's contact email for follow-up")
+    model_used: Optional[str] = Field(default=None, description="Model used for generation")
+    execution_time_ms: Optional[float] = Field(default=None, description="Query execution time")
+    row_count: Optional[int] = Field(default=None, description="Number of rows returned")
+
+
+class FeedbackTicketResponse(BaseModel):
+    """Response model for feedback ticket submission"""
+    success: bool
+    ticket_id: Optional[str] = None
+    message: str
+    created_at: Optional[datetime] = None
+
+
 # Example queries for users
 EXAMPLE_QUERIES = [
     ExampleQuery(

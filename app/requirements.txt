@@ -9,6 +9,10 @@ pydantic-settings==2.1.0
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.23
 
+# MongoDB
+motor==3.3.2
+pymongo==4.6.1
+
 # OpenAI
 openai==2.1.0
 
