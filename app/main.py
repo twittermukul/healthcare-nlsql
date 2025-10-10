@@ -195,6 +195,77 @@ async def get_example_queries():
     return EXAMPLE_QUERIES
 
 
+@app.get("/api/schema")
+async def get_schema():
+    """
+    Get database schema information - all tables and views with their columns
+
+    Returns schema metadata for visualization including:
+    - Table/View names
+    - Column names and data types
+    - Primary keys
+    """
+    try:
+        schema_query = """
+        SELECT
+            t.table_name,
+            t.table_type,
+            c.column_name,
+            c.data_type,
+            c.is_nullable,
+            CASE
+                WHEN pk.column_name IS NOT NULL THEN true
+                ELSE false
+            END as is_primary_key
+        FROM information_schema.tables t
+        LEFT JOIN information_schema.columns c
+            ON t.table_name = c.table_name
+            AND t.table_schema = c.table_schema
+        LEFT JOIN (
+            SELECT kcu.table_name, kcu.column_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+                ON tc.constraint_name = kcu.constraint_name
+            WHERE tc.constraint_type = 'PRIMARY KEY'
+                AND tc.table_schema = 'public'
+        ) pk ON c.table_name = pk.table_name AND c.column_name = pk.column_name
+        WHERE t.table_schema = 'public'
+            AND (t.table_type = 'VIEW' OR t.table_type = 'BASE TABLE')
+            AND (t.table_name LIKE 'vw_%' OR t.table_name LIKE 'dim_%')
+        ORDER BY t.table_name, c.ordinal_position
+        """
+
+        result = db_service.execute_query(schema_query)
+
+        # Group by table
+        tables_dict = {}
+        for row in result['rows']:
+            table_name = row['table_name']
+            if table_name not in tables_dict:
+                tables_dict[table_name] = {
+                    'table_name': table_name,
+                    'table_type': row['table_type'],
+                    'columns': []
+                }
+
+            if row['column_name']:  # Only add if column exists
+                tables_dict[table_name]['columns'].append({
+                    'column_name': row['column_name'],
+                    'data_type': row['data_type'],
+                    'is_nullable': row['is_nullable'] == 'YES',
+                    'is_primary_key': row['is_primary_key']
+                })
+
+        schema = list(tables_dict.values())
+        logger.info(f"Schema endpoint: Returned {len(schema)} tables/views")
+
+        return schema
+
+    except Exception as e:
+        logger.error(f"Schema fetch error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/generate-sql")
 async def generate_sql_only(request: QueryRequest):
     """
