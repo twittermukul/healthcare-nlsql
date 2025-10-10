@@ -75,8 +75,9 @@ class MongoDBService:
             ticket_id: Unique ticket identifier
         """
         try:
-            # Generate ticket ID
-            ticket_id = f"TICKET-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            # Generate unique ticket ID with microseconds
+            now = datetime.utcnow()
+            ticket_id = f"TICKET-{now.strftime('%Y%m%d%H%M%S')}{now.microsecond:06d}"
 
             # Prepare ticket document
             ticket = {

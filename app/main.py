@@ -393,7 +393,7 @@ async def submit_feedback_ticket(request: FeedbackTicketRequest):
         return FeedbackTicketResponse(
             success=True,
             ticket_id=ticket_id,
-            message="Feedback ticket submitted successfully. We'll review it and get back to you if you provided contact information.",
+            message=f"Thank you for your feedback! We will get back to you within 24 hours. Your ticket ID: {ticket_id}",
             created_at=datetime.utcnow()
         )
 

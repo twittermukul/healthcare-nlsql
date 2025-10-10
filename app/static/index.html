@@ -1329,11 +1329,11 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    showFeedbackSuccess(`✓ Ticket submitted successfully! Ticket ID: ${result.ticket_id}`);
-                    // Close modal after 3 seconds
+                    showFeedbackSuccess(`✓ Thank you for your feedback! We will get back to you within 24 hours. Your ticket ID: ${result.ticket_id}`);
+                    // Close modal after 5 seconds to give time to read the ticket ID
                     setTimeout(() => {
                         closeFeedbackModal();
-                    }, 3000);
+                    }, 5000);
                 } else {
                     showFeedbackError(result.message || 'Failed to submit ticket');
                 }
