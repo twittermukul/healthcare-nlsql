@@ -860,12 +860,25 @@
                 }
 
                 if (data.conversation.suggestions && data.conversation.suggestions.length > 0) {
+                    const customInputId = `customFollowup_${Date.now()}`;
                     resultHTML += `<div style="margin-top: 12px; font-weight: 600;">🔍 Try these next:</div>`;
                     data.conversation.suggestions.forEach(s => {
                         resultHTML += `
                             <div class="suggestion-chip" onclick="executeSuggestion('${s.question.replace(/'/g, "\\'")}')">${s.question}</div>
                         `;
                     });
+                    // Add custom input option
+                    resultHTML += `
+                        <div style="margin-top: 12px; padding: 12px; background: #EFF6FF; border-radius: 8px; border: 1px solid #DBEAFE;">
+                            <input type="text" id="${customInputId}" placeholder="✏️ Or type your own follow-up question..."
+                                   style="width: 100%; padding: 10px; border: 2px solid #3B82F6; border-radius: 6px; font-size: 0.95em;"
+                                   onkeypress="if(event.key==='Enter') executeCustomFollowup('${customInputId}')">
+                            <button onclick="executeCustomFollowup('${customInputId}')"
+                                    style="margin-top: 8px; padding: 8px 16px; background: #3B82F6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9em;">
+                                Ask Question
+                            </button>
+                        </div>
+                    `;
                 }
 
                 if (data.conversation.nudge) {
@@ -1118,6 +1131,17 @@
             document.getElementById('questionInput').value = question;
             skipSpellCheck = true;
             executeQuery(true);
+        }
+
+        function executeCustomFollowup(inputId) {
+            const input = document.getElementById(inputId);
+            const question = input.value.trim();
+            if (question) {
+                document.getElementById('questionInput').value = question;
+                skipSpellCheck = true;
+                executeQuery(true);
+                input.value = ''; // Clear the custom input
+            }
         }
 
         function executeCustomClarification(inputId) {
