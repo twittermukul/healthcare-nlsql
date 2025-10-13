@@ -97,8 +97,17 @@ RUN_TESTS=yes
 This loads:
 - ✅ Star schema (9 dims, 7 facts, 2 aggregates)
 - ✅ 20+ semantic views
-- ✅ Sample data (1000 patients, 50k claims)
+- ✅ Sample data (1000 patients, 50k claims, 1100 patient attributions)
 - ✅ NL→SQL ontology
+
+**Database Setup Scripts:**
+- `01_schema_ddl.sql` - Table structures
+- `02_seed_data.sql` - Reference data
+- `03_semantic_views.sql` - Pre-built views
+- `04_nlsql_ontology.sql` - Semantic layer
+- `05_example_queries.sql` - Test queries
+- `06_sample_data_generator.sql` - Patient & claims data
+- `07_populate_patient_attribution.sql` - Patient-org-payer attribution
 
 #### 2. Configure FastAPI Application
 
@@ -417,7 +426,13 @@ GROUP BY fd.patient_sk, cm.condition_group_sk, d.year;
 ## 🔒 Security & Governance
 
 ### Row-Level Security (RLS)
-Use `patient_attribution` table to restrict access by organization/payer:
+Use `patient_attribution` table to restrict access by organization/payer.
+
+The `patient_attribution` table is fully populated with:
+- **1,100 attribution records** (1,000 current + 100 historical)
+- **50 organizations** (ORG-001 to ORG-050)
+- **5 payer plans** (Blue Cross Blue Shield, Aetna, United Healthcare, Cigna, Humana)
+- **Time-based attribution** tracking (start/end dates)
 
 ```sql
 -- Example RLS policy (PostgreSQL)

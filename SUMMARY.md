@@ -4,7 +4,7 @@
 
 A **complete, production-ready healthcare analytics data warehouse** optimized for natural language to SQL translation.
 
-## 📦 Complete Package (9 files)
+## 📦 Complete Package (10 files)
 
 | File | Purpose | Lines | Status |
 |------|---------|-------|--------|
@@ -16,9 +16,10 @@ A **complete, production-ready healthcare analytics data warehouse** optimized f
 | **04_nlsql_ontology.sql** | NL→SQL dictionary (80+ terms) | ~550 | ✅ Ready |
 | **05_example_queries.sql** | All 9 use cases + alternatives | ~650 | ✅ Ready |
 | **06_sample_data_generator.sql** | 1000 patients, 50k claims | ~650 | ✅ Ready |
+| **07_populate_patient_attribution.sql** | Patient-org-payer attribution (1,100 records) | ~150 | ✅ Ready |
 | **README.md** | Complete documentation | ~400 | ✅ Ready |
 
-**Total:** ~4,200 lines of production SQL + docs
+**Total:** ~4,350 lines of production SQL + docs
 
 ---
 
@@ -47,7 +48,7 @@ A **complete, production-ready healthcare analytics data warehouse** optimized f
 - **9 Dimension Tables**: patient, provider, facility, payer, date, code, condition_group, quality_measure, county
 - **7 Fact Tables**: claim_line, encounter, diagnosis, quality_event, medication, lab_result
 - **2 Aggregates**: monthly_cost (performance), condition_year (prevalence)
-- **4 Mapping Tables**: code→condition, code→measure
+- **4 Mapping Tables**: code→condition, code→measure, patient_attribution (1,100 records)
 
 ### Semantic Layer (NL→SQL Ready)
 - **20+ Views** with descriptive names (e.g., `vw_patient_annual_costs_2025`)

@@ -189,11 +189,14 @@ After successful deployment:
 - **1,000 patients** (realistic demographics)
 - **20 providers** (PCPs + specialists)
 - **10 facilities** (hospitals, clinics, ER)
-- **5 payer plans** (Commercial + Medicare)
+- **5 payer plans** (BCBS, Aetna, United Healthcare, Cigna, Humana)
 - **~50,000 claim lines** (visits, procedures, ER, IP)
 - **Chronic conditions** (diabetes, HTN, cancer, etc.)
 - **Quality events** (screening compliance)
 - **Monthly cost rollups** (all 12 months of 2025)
+- **1,100 patient attributions** (patient-organization-payer relationships)
+  - 1,000 current attributions across 50 organizations
+  - 100 historical attributions (patients who changed payers/orgs)
 
 ---
 
